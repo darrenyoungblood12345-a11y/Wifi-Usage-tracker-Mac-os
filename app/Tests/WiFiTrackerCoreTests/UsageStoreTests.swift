@@ -1,0 +1,74 @@
+import Foundation
+import Testing
+@testable import WiFiTrackerCore
+
+@Suite("Usage store")
+struct UsageStoreTests {
+  let store: UsageStore
+
+  init() throws {
+    let url = FileManager.default.temporaryDirectory
+      .appending(path: "wifitracker-tests-\(UUID().uuidString)")
+      .appending(path: "usage.sqlite")
+    store = try UsageStore(url: url)
+  }
+
+  func at(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: seconds) }
+
+  func record(_ seconds: TimeInterval, _ network: String = "Home", rx: UInt64, tx: UInt64 = 0) -> UsageRecord {
+    UsageRecord(bucket: at(seconds), network: network, bytes: ByteCounters(received: rx, sent: tx))
+  }
+
+  @Test("adds to an existing bucket instead of replacing it")
+  func upsertAccumulates() throws {
+    try store.add([record(3_600, rx: 100, tx: 10)])
+    try store.add([record(3_600, rx: 50, tx: 5), record(3_600, "Cafe", rx: 1)])
+    let records = try store.allRecords()
+    #expect(records.count == 2)
+    #expect(records.first { $0.network == "Home" }?.bytes == ByteCounters(received: 150, sent: 15))
+  }
+
+  @Test("filters records to a half-open interval")
+  func rangeQuery() throws {
+    try store.add([record(60, rx: 1), record(120, rx: 2), record(180, rx: 4)])
+    let records = try store.records(in: DateInterval(start: at(60), end: at(180)))
+    #expect(records.map(\.bytes.received) == [1, 2])
+    #expect(try store.total(since: at(120)) == ByteCounters(received: 6, sent: 0))
+    #expect(try store.total(since: nil) == ByteCounters(received: 7, sent: 0))
+  }
+
+  @Test("compacts old minutes into hours without losing bytes")
+  func compaction() throws {
+    try store.add([
+      record(7_200, rx: 1),             // 02:00 minute (already on the hour)
+      record(7_260, rx: 2, tx: 1),      // 02:01
+      record(10_740, rx: 4),            // 02:59
+      record(10_740, "Cafe", rx: 8),    // 02:59, other network
+      record(10_800, rx: 16),           // 03:00, newer than cutoff
+      record(10_860, rx: 32),           // 03:01, newer than cutoff
+    ])
+    try store.compact(olderThan: at(10_800))
+    let records = try store.allRecords()
+    #expect(records.map { "\(Int($0.bucket.timeIntervalSince1970)) \($0.network) \($0.bytes.received)" } == [
+      "7200 Cafe 8",
+      "7200 Home 7",
+      "10800 Home 16",
+      "10860 Home 32",
+    ])
+    #expect(try store.total(since: nil) == ByteCounters(received: 63, sent: 1))
+  }
+
+  @Test("exports CSV with quoted network names")
+  func csv() throws {
+    try store.add([record(0, "Joe's \"Fast\", Wi-Fi", rx: 3, tx: 4)])
+    let csv = try store.exportCSV()
+    #expect(csv == "bucket_start,network,downloaded_bytes,uploaded_bytes\n1970-01-01T00:00:00Z,\"Joe's \"\"Fast\"\", Wi-Fi\",3,4\n")
+  }
+
+  @Test("clears all history")
+  func deleteAll() throws {
+    try store.add([record(60, rx: 1)])
+    try store.deleteAll()
+    #expect(try store.allRecords().isEmpty)
+  }
+}

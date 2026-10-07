@@ -11,7 +11,7 @@ Plan: native SwiftUI menu bar + dashboard app, per-SSID usage, .dmg, landing pag
 - [x] Build, launch, verify counters vs netstat
 - [x] Landing page + Pages workflow + screenshot
 - [x] git init, initial commit
-- [ ] (confirm) push, enable Pages, release v1.0.0
+- [x] (confirmed by user) push, enable Pages, release v1.0.0
 
 ## Review
 
@@ -22,3 +22,6 @@ Plan: native SwiftUI menu bar + dashboard app, per-SSID usage, .dmg, landing pag
 - Idle cost: ~20 MB footprint, ~3% of one core — almost all AppKit redrawing the status item each second.
 - Landing page checked at 1440px and 375px, light and dark; no horizontal overflow; local download serves the DMG.
 - Not yet verified: Location prompt → SSID names (needs a user click), launch-at-login from /Applications.
+- Published 2026-10-07: release v1.0.0 (DMG downloaded from releases/latest is byte-identical to the local build);
+  site live at https://darrenyoungblood12345-a11y.github.io/Wifi-Usage-tracker-Mac-os/ (first deploy failed on an
+  artifact race; fixed by splitting build/deploy jobs).

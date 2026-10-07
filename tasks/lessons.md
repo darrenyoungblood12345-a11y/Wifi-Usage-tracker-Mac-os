@@ -16,3 +16,5 @@ _Patterns learned from corrections. Review at session start._
 - **Scope text replacements to one occurrence.** A blanket `str.replace('<b>WiFi Tracker</b>', …)` meant for the
   landing page's faux menu bar also rewrote install step 2. Rule: replace with a unique surrounding context (or the
   Edit tool), then grep for the old and new strings to confirm the count.
+- **Pages: upload and deploy in separate jobs.** `deploy-pages` run in the same job right after `upload-pages-artifact`
+  found 0 artifacts (listing race). Follow GitHub's template: `build` job uploads, `deploy` job `needs: build`.

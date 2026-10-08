@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import Testing
 @testable import WiFiTrackerCore
 
@@ -65,10 +66,51 @@ struct UsageStoreTests {
     #expect(csv == "bucket_start,network,downloaded_bytes,uploaded_bytes\n1970-01-01T00:00:00Z,\"Joe's \"\"Fast\"\", Wi-Fi\",3,4\n")
   }
 
-  @Test("clears all history")
+  @Test("clears all history, including per-app usage")
   func deleteAll() throws {
     try store.add([record(60, rx: 1)])
+    try store.addAppUsage([appRecord(0, "curl", rx: 1)])
     try store.deleteAll()
     #expect(try store.allRecords().isEmpty)
+    #expect(try store.appUsage(in: DateInterval(start: at(0), end: at(86_400))).isEmpty)
+  }
+
+  func appRecord(_ seconds: TimeInterval, _ app: String, name: String? = nil, rx: UInt64, tx: UInt64 = 0) -> AppUsageRecord {
+    AppUsageRecord(bucket: at(seconds), app: app, name: name ?? app, bytes: ByteCounters(received: rx, sent: tx))
+  }
+
+  @Test("adds app usage to the same hour and sums it per app, largest first, with the newest name")
+  func appUsage() throws {
+    try store.addAppUsage([
+      appRecord(0, "com.google.Chrome", name: "Chrome", rx: 100, tx: 10),
+      appRecord(0, "curl", rx: 5),
+    ])
+    try store.addAppUsage([
+      appRecord(0, "com.google.Chrome", name: "Chrome", rx: 50),
+      appRecord(3_600, "com.google.Chrome", name: "Google Chrome", rx: 1),
+      appRecord(3_600, "curl", rx: 500),
+      appRecord(7_200, "curl", rx: 9_999), // outside the interval
+    ])
+    let apps = try store.appUsage(in: DateInterval(start: at(0), end: at(7_200)))
+    #expect(apps == [
+      AppUsage(id: "curl", name: "curl", bytes: ByteCounters(received: 505, sent: 0)),
+      AppUsage(id: "com.google.Chrome", name: "Google Chrome", bytes: ByteCounters(received: 151, sent: 10)),
+    ])
+  }
+
+  @Test("adds the app usage table to a database created before it existed")
+  func migratesOldDatabase() throws {
+    let url = FileManager.default.temporaryDirectory
+      .appending(path: "wifitracker-tests-\(UUID().uuidString)")
+      .appending(path: "usage.sqlite")
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    var handle: OpaquePointer?
+    #expect(sqlite3_open(url.path, &handle) == SQLITE_OK)
+    #expect(sqlite3_exec(handle, "CREATE TABLE usage (bucket INTEGER NOT NULL, network TEXT NOT NULL, rx INTEGER NOT NULL DEFAULT 0, tx INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (bucket, network)) WITHOUT ROWID", nil, nil, nil) == SQLITE_OK)
+    sqlite3_close(handle)
+
+    let store = try UsageStore(url: url)
+    try store.addAppUsage([appRecord(0, "curl", rx: 1)])
+    #expect(try store.appUsage(in: DateInterval(start: at(0), end: at(3_600))).count == 1)
   }
 }

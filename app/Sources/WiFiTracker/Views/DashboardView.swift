@@ -59,6 +59,7 @@ struct DashboardView: View {
         liveSection
         tiles
         historySection
+        AppsSection()
       }
       .padding(24)
     }
@@ -197,23 +198,7 @@ struct NetworksList: View {
             .lineLimit(1)
             .truncationMode(.tail)
             .frame(width: 180, alignment: .leading)
-          GeometryReader { geometry in
-            let width = geometry.size.width * Double(network.bytes.total) / max(largest, 1)
-            let downloadWidth = width * Double(network.bytes.received) / Double(max(network.bytes.total, 1))
-            HStack(spacing: 2) {
-              UnevenRoundedRectangle(bottomTrailingRadius: network.bytes.sent == 0 ? 4 : 0, topTrailingRadius: network.bytes.sent == 0 ? 4 : 0)
-                .fill(Palette.download)
-                .frame(width: max(0, downloadWidth - (network.bytes.sent > 0 ? 1 : 0)))
-              if network.bytes.sent > 0 {
-                UnevenRoundedRectangle(bottomTrailingRadius: 4, topTrailingRadius: 4)
-                  .fill(Palette.upload)
-                  .frame(width: max(2, width - downloadWidth - 1))
-              }
-            }
-            .frame(height: 12)
-            .frame(maxHeight: .infinity)
-          }
-          .frame(height: 20)
+          UsageBar(bytes: network.bytes, largest: largest)
           Text(formatBytes(network.bytes.total))
             .monospacedDigit()
             .fontWeight(.medium)

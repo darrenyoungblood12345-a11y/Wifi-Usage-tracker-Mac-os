@@ -18,3 +18,15 @@ _Patterns learned from corrections. Review at session start._
   Edit tool), then grep for the old and new strings to confirm the count.
 - **Pages: upload and deploy in separate jobs.** `deploy-pages` run in the same job right after `upload-pages-artifact`
   found 0 artifacts (listing race). Follow GitHub's template: `build` job uploads, `deploy` job `needs: build`.
+
+## 2026-10-07 — Per-app usage
+
+- **Put dev env overrides on the launch command itself.** `cmd & … export WIFITRACKER_STORE=…` never reaches the
+  already-started process, so a test bundle (same bundle ID → same UserDefaults checkpoint) ran against the real
+  database and double-counted catch-up traffic. Rule: `WIFITRACKER_STORE=… cmd &` on one line, and confirm with
+  `ps eww <pid> | grep WIFITRACKER_STORE` before measuring anything.
+- **Measure a tool's steady-state cost before building on it.** `nettop` in logging mode (`-L 0`) busy-polls at
+  ~130% CPU even with `-s`/`-c`; a one-shot `-L 1` costs ~15 ms. Its per-process figures only sum currently open
+  sockets (they drop when a connection closes), so diff per socket, never per process.
+- **Website screenshots must not leak the developer's SSID.** A bundle with Location access shows the real network
+  name; render shots with the unbundled release binary (no bundle ID → no Location) and check the header.

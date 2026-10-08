@@ -32,7 +32,7 @@ public struct PeriodTotals: Equatable, Sendable {
   }
 }
 
-/// Per-minute usage history in SQLite.
+/// Per-minute usage history in SQLite, plus hourly usage per app.
 ///
 /// Calls are synchronous and serialised by a lock so the app can flush on quit without awaiting;
 /// heavier reads can be made from a background task.
@@ -66,6 +66,16 @@ public final class UsageStore: @unchecked Sendable {
         PRIMARY KEY (bucket, network)
       ) WITHOUT ROWID
       """)
+    try execute("""
+      CREATE TABLE IF NOT EXISTS app_usage (
+        bucket INTEGER NOT NULL,
+        app    TEXT    NOT NULL,
+        name   TEXT    NOT NULL,
+        rx     INTEGER NOT NULL DEFAULT 0,
+        tx     INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (bucket, app)
+      ) WITHOUT ROWID
+      """)
   }
 
   deinit {
@@ -78,8 +88,7 @@ public final class UsageStore: @unchecked Sendable {
   public func add(_ records: [UsageRecord]) throws {
     guard !records.isEmpty else { return }
     try locked {
-      try execute("BEGIN")
-      do {
+      try transaction {
         try withStatement("""
           INSERT INTO usage (bucket, network, rx, tx) VALUES (?, ?, ?, ?)
           ON CONFLICT (bucket, network) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
@@ -93,10 +102,29 @@ public final class UsageStore: @unchecked Sendable {
             sqlite3_reset(statement)
           }
         }
-        try execute("COMMIT")
-      } catch {
-        try? execute("ROLLBACK")
-        throw error
+      }
+    }
+  }
+
+  /// Adds per-app records to whatever is already stored for the same hour and app, keeping the newest name.
+  public func addAppUsage(_ records: [AppUsageRecord]) throws {
+    guard !records.isEmpty else { return }
+    try locked {
+      try transaction {
+        try withStatement("""
+          INSERT INTO app_usage (bucket, app, name, rx, tx) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT (bucket, app) DO UPDATE SET name = excluded.name, rx = rx + excluded.rx, tx = tx + excluded.tx
+          """) { statement in
+          try records.forEach { record in
+            sqlite3_bind_int64(statement, 1, seconds(record.bucket))
+            sqlite3_bind_text(statement, 2, record.app, -1, sqliteTransient)
+            sqlite3_bind_text(statement, 3, record.name, -1, sqliteTransient)
+            sqlite3_bind_int64(statement, 4, Int64(clamping: record.bytes.received))
+            sqlite3_bind_int64(statement, 5, Int64(clamping: record.bytes.sent))
+            try step(statement)
+            sqlite3_reset(statement)
+          }
+        }
       }
     }
   }
@@ -104,8 +132,7 @@ public final class UsageStore: @unchecked Sendable {
   /// Rolls minute buckets older than `cutoff` up into hour buckets to keep the database small.
   public func compact(olderThan cutoff: Date) throws {
     try locked {
-      try execute("BEGIN")
-      do {
+      try transaction {
         try withStatement("""
           INSERT INTO usage (bucket, network, rx, tx)
           SELECT (bucket / 3600) * 3600 AS hour, network, SUM(rx), SUM(tx)
@@ -120,16 +147,17 @@ public final class UsageStore: @unchecked Sendable {
           sqlite3_bind_int64(statement, 1, seconds(cutoff))
           try step(statement)
         }
-        try execute("COMMIT")
-      } catch {
-        try? execute("ROLLBACK")
-        throw error
       }
     }
   }
 
   public func deleteAll() throws {
-    try locked { try execute("DELETE FROM usage") }
+    try locked {
+      try transaction {
+        try execute("DELETE FROM usage")
+        try execute("DELETE FROM app_usage")
+      }
+    }
   }
 
   // MARK: Reads
@@ -160,6 +188,32 @@ public final class UsageStore: @unchecked Sendable {
         return try rows(statement) { row in
           ByteCounters(received: UInt64(clamping: sqlite3_column_int64(row, 0)), sent: UInt64(clamping: sqlite3_column_int64(row, 1)))
         }.first ?? .zero
+      }
+    }
+  }
+
+  /// Usage per app in hours starting within `interval`, largest first. Each app keeps its most recent name.
+  public func appUsage(in interval: DateInterval) throws -> [AppUsage] {
+    try locked {
+      // A bare column next to MAX() takes its value from the row holding the maximum, i.e. the newest name.
+      try withStatement("""
+        SELECT app, name, SUM(rx), SUM(tx), MAX(bucket) FROM app_usage
+        WHERE bucket >= ?1 AND bucket < ?2
+        GROUP BY app
+        ORDER BY SUM(rx) + SUM(tx) DESC, name
+        """) { statement in
+        sqlite3_bind_int64(statement, 1, seconds(interval.start))
+        sqlite3_bind_int64(statement, 2, seconds(interval.end))
+        return try rows(statement) { row in
+          AppUsage(
+            id: sqlite3_column_text(row, 0).map { String(cString: $0) } ?? "",
+            name: sqlite3_column_text(row, 1).map { String(cString: $0) } ?? "",
+            bytes: ByteCounters(
+              received: UInt64(clamping: sqlite3_column_int64(row, 2)),
+              sent: UInt64(clamping: sqlite3_column_int64(row, 3))
+            )
+          )
+        }
       }
     }
   }
@@ -195,6 +249,17 @@ public final class UsageStore: @unchecked Sendable {
 
   private func execute(_ sql: String) throws {
     guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw lastError() }
+  }
+
+  private func transaction(_ body: () throws -> Void) throws {
+    try execute("BEGIN")
+    do {
+      try body()
+      try execute("COMMIT")
+    } catch {
+      try? execute("ROLLBACK")
+      throw error
+    }
   }
 
   private func withStatement<T>(_ sql: String, _ body: (OpaquePointer) throws -> T) throws -> T {

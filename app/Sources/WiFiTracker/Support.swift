@@ -66,6 +66,7 @@ enum SettingsKey {
   static let onboardingDismissed = "onboardingDismissed"
   static let hasLaunchedBefore = "hasLaunchedBefore"
   static let liveWindow = "liveWindow"
+  static let appsRange = "appsRange"
 }
 
 enum LoginItem {

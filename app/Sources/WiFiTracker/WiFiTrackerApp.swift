@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     DevOptions.applyAppearance()
-    monitor.start()
+    monitor.start(tracksApps: !DevOptions.isSnapshotting)
   }
 
   /// Closing the dashboard keeps tracking from the menu bar.

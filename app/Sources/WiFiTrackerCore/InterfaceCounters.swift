@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 /// Cumulative byte counts for one network interface (or a delta between two readings).
-public struct ByteCounters: Equatable, Hashable, Sendable {
+public struct ByteCounters: Equatable, Hashable, Codable, Sendable {
   public var received: UInt64
   public var sent: UInt64
 

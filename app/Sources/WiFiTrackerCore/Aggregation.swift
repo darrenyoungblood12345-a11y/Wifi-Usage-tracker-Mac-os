@@ -5,12 +5,17 @@ public struct UsageRecord: Equatable, Sendable {
   public var bucket: Date
   public var network: String
   public var bytes: ByteCounters
+  public var isUnattributed: Bool
 
-  public init(bucket: Date, network: String, bytes: ByteCounters) {
+  public init(bucket: Date, network: String, bytes: ByteCounters, isUnattributed: Bool = false) {
     self.bucket = bucket
     self.network = network
     self.bytes = bytes
+    self.isUnattributed = isUnattributed
   }
+
+  public var identity: NetworkIdentity { isUnattributed ? .unattributed : .named(network) }
+  public var displayName: String { identity.displayName }
 }
 
 public enum Granularity: Sendable {
@@ -40,11 +45,14 @@ public struct UsagePoint: Equatable, Identifiable, Sendable {
 public struct NetworkUsage: Equatable, Identifiable, Sendable {
   public var network: String
   public var bytes: ByteCounters
-  public var id: String { network }
+  public var isUnattributed: Bool
+  public var id: NetworkIdentity { isUnattributed ? .unattributed : .named(network) }
+  public var displayName: String { id.displayName }
 
-  public init(network: String, bytes: ByteCounters) {
+  public init(network: String, bytes: ByteCounters, isUnattributed: Bool = false) {
     self.network = network
     self.bytes = bytes
+    self.isUnattributed = isUnattributed
   }
 }
 
@@ -76,9 +84,9 @@ public func aggregate(
 /// Total usage per network, largest first.
 public func usageByNetwork(_ records: [UsageRecord]) -> [NetworkUsage] {
   records
-    .reduce(into: [String: ByteCounters]()) { $0[$1.network, default: .zero] = $0[$1.network, default: .zero] + $1.bytes }
-    .map { NetworkUsage(network: $0.key, bytes: $0.value) }
-    .sorted { ($0.bytes.total, $1.network) > ($1.bytes.total, $0.network) }
+    .reduce(into: [NetworkIdentity: ByteCounters]()) { $0[$1.identity, default: .zero] += $1.bytes }
+    .map { NetworkUsage(network: $0.key.storageName, bytes: $0.value, isUnattributed: $0.key.isUnattributed) }
+    .sorted { ($0.bytes.total, $1.displayName) > ($1.bytes.total, $0.displayName) }
 }
 
 public func totalUsage(_ records: [UsageRecord]) -> ByteCounters {

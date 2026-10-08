@@ -2,11 +2,10 @@ import AppKit
 import CoreLocation
 import CoreWLAN
 import Observation
+import WiFiTrackerCore
 
-/// The Wi-Fi interface and the network it's joined to.
-///
-/// macOS only reveals the network name (SSID) to apps with Location Services access, so until the
-/// user allows it every network is recorded under `genericName`. The app never asks for a location fix.
+/// Reads connection identity alongside every counter sample. Network names can remain unavailable
+/// even with authorization, so availability is separate from permission.
 @MainActor
 @Observable
 final class WiFiInfo {
@@ -14,90 +13,161 @@ final class WiFiInfo {
     case off, disconnected, connected
   }
 
-  static let genericName = "Wi-Fi"
+  struct Snapshot: Equatable {
+    var interfaceName: String?
+    var ssid: String?
+    var status: Status
+    var locationAuthorization: CLAuthorizationStatus
+    var locationServicesEnabled: Bool
+  }
 
-  private(set) var interfaceName = "en0"
-  private(set) var ssid: String?
-  private(set) var status = Status.disconnected
-  private(set) var locationAuthorization: CLAuthorizationStatus
+  private(set) var snapshot: Snapshot
+  private(set) var connectionRevision = 0
 
   @ObservationIgnored private let client = CWWiFiClient.shared()
   @ObservationIgnored private let locationManager = CLLocationManager()
   @ObservationIgnored private let locationDelegate = LocationDelegate()
-  @ObservationIgnored private var lastRefresh: ContinuousClock.Instant?
+  @ObservationIgnored private let eventDelegate = WiFiEventDelegate()
+  @ObservationIgnored private let snapshotReader: (() -> Snapshot)?
 
-  init() {
-    locationAuthorization = locationManager.authorizationStatus
+  init(snapshotReader: (() -> Snapshot)? = nil, monitorsEvents: Bool = true) {
+    self.snapshotReader = snapshotReader
+    snapshot = Snapshot(interfaceName: nil, ssid: nil, status: .off,
+                        locationAuthorization: .notDetermined, locationServicesEnabled: false)
     locationManager.delegate = locationDelegate
-    locationDelegate.onChange = { [weak self] status in
-      self?.locationAuthorization = status
-      self?.refresh()
+    locationDelegate.onChange = { [weak self] in self?.refresh() }
+    if monitorsEvents {
+      client.delegate = eventDelegate
+      eventDelegate.onChange = { [weak self] in
+        guard let self else { return }
+        self.connectionRevision += 1
+        self.refresh()
+      }
+      for event in [CWEventType.ssidDidChange, .linkDidChange, .powerDidChange] {
+        do {
+          try client.startMonitoringEvent(with: event)
+        } catch {
+          NetworkDiagnostics.write("wifi-events-unavailable", fields: ["event": String(event.rawValue)])
+        }
+      }
     }
     refresh()
   }
 
-  /// The name usage is recorded under.
-  var networkName: String { ssid ?? Self.genericName }
+  var interfaceName: String? { snapshot.interfaceName }
+  var ssid: String? { snapshot.ssid }
+  var status: Status { snapshot.status }
+  var locationAuthorization: CLAuthorizationStatus { snapshot.locationAuthorization }
+  var locationServicesEnabled: Bool { snapshot.locationServicesEnabled }
+  var networkName: String { ssid ?? "Wi-Fi" }
 
-  var canReadNetworkNames: Bool {
-    switch locationAuthorization {
-    case .notDetermined, .denied, .restricted: false
-    default: true
+  var networkIdentity: NetworkIdentity? {
+    guard status == .connected else { return nil }
+    return ssid.map(NetworkIdentity.named) ?? .unattributed
+  }
+
+  var hasLocationPermission: Bool {
+    locationAuthorization == .authorizedAlways
+  }
+
+  var canReadNetworkNames: Bool { status == .connected && ssid != nil }
+
+  var nameAvailabilityMessage: String? {
+    // The actual name read establishes availability even when authorization metadata differs.
+    if canReadNetworkNames { return nil }
+    guard locationServicesEnabled else {
+      return "Turn on Location Services in System Settings to split usage by network."
     }
+    guard hasLocationPermission else {
+      return "Allow Location access to split usage by network. Your location is never read."
+    }
+    guard status == .connected, ssid == nil else { return nil }
+    return "Connected, but macOS has not provided the network name. Usage is counted as Unattributed Wi-Fi until the name is available."
+  }
+
+  var requestNamesButtonTitle: String {
+    !locationServicesEnabled || !hasLocationPermission ? "Show network names…" : "Refresh network name"
   }
 
   var statusText: String {
     switch status {
     case .off: "Wi-Fi is off"
     case .disconnected: "Not connected"
-    case .connected: "Connected · \(interfaceName)"
-    }
-  }
-
-  /// Re-reads the interface at most every five seconds; cheap enough to call on every sample.
-  func refreshIfStale() {
-    guard let lastRefresh, ContinuousClock.now - lastRefresh < .seconds(5) else {
-      refresh()
-      return
+    case .connected: "Connected · \(interfaceName ?? "Wi-Fi")"
     }
   }
 
   func refresh() {
-    lastRefresh = .now
-    guard let interface = client.interface() else {
-      status = .off
-      ssid = nil
-      return
+    let next = snapshotReader?() ?? readSystemSnapshot()
+    if next != snapshot {
+      connectionRevision += 1
+      snapshot = next
+      NetworkDiagnostics.write("wifi-state", fields: diagnosticFields)
     }
-    interfaceName = interface.interfaceName ?? "en0"
-    guard interface.powerOn() else {
-      status = .off
-      ssid = nil
-      return
-    }
-    ssid = interface.ssid()
-    status = ssid != nil || interface.rssiValue() != 0 ? .connected : .disconnected
   }
 
-  /// Shows the system prompt, or opens Location Services settings if the user already said no.
+  var diagnosticFields: [String: String] {
+    [
+      "interface": interfaceName ?? "none",
+      "connected": String(status == .connected),
+      "powered": String(status != .off),
+      "hasSSID": String(ssid != nil),
+      "authorization": String(locationAuthorization.rawValue),
+      "locationServicesEnabled": String(locationServicesEnabled),
+      "connectionRevision": String(connectionRevision),
+    ]
+  }
+
+  /// Request permission when needed, or retry a failed name read without changing network settings.
   func requestNetworkNames() {
-    switch locationAuthorization {
-    case .notDetermined:
+    if locationServicesEnabled && locationAuthorization == .notDetermined {
       locationManager.requestWhenInUseAuthorization()
-    default:
+    } else if !locationServicesEnabled || !hasLocationPermission {
       if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
         NSWorkspace.shared.open(url)
       }
+    } else {
+      refresh()
     }
+  }
+
+  private func readSystemSnapshot() -> Snapshot {
+    let interface = client.interface()
+    let powered = interface?.powerOn() ?? false
+    let name = powered ? interface?.ssid() : nil
+    let connected = powered && (name != nil || (interface?.rssiValue() ?? 0) != 0)
+    return Snapshot(
+      interfaceName: interface?.interfaceName,
+      ssid: name,
+      status: !powered ? .off : connected ? .connected : .disconnected,
+      locationAuthorization: locationManager.authorizationStatus,
+      locationServicesEnabled: CLLocationManager.locationServicesEnabled()
+    )
   }
 }
 
 @MainActor
 private final class LocationDelegate: NSObject, CLLocationManagerDelegate {
-  var onChange: ((CLAuthorizationStatus) -> Void)?
+  var onChange: (() -> Void)?
 
   nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    let status = manager.authorizationStatus
-    Task { @MainActor in self.onChange?(status) }
+    Task { @MainActor in self.onChange?() }
+  }
+}
+
+@MainActor
+private final class WiFiEventDelegate: NSObject, CWEventDelegate {
+  var onChange: (() -> Void)?
+
+  nonisolated func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
+    Task { @MainActor in self.onChange?() }
+  }
+
+  nonisolated func linkDidChangeForWiFiInterface(withName interfaceName: String) {
+    Task { @MainActor in self.onChange?() }
+  }
+
+  nonisolated func powerStateDidChangeForWiFiInterface(withName interfaceName: String) {
+    Task { @MainActor in self.onChange?() }
   }
 }

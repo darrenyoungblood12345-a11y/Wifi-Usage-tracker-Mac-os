@@ -89,6 +89,32 @@ struct DirectionBreakdown: View {
   }
 }
 
+/// Download and upload as one stacked bar, scaled against the largest row in its list.
+struct UsageBar: View {
+  let bytes: ByteCounters
+  let largest: Double
+
+  var body: some View {
+    GeometryReader { geometry in
+      let width = geometry.size.width * Double(bytes.total) / max(largest, 1)
+      let downloadWidth = width * Double(bytes.received) / Double(max(bytes.total, 1))
+      HStack(spacing: 2) {
+        UnevenRoundedRectangle(bottomTrailingRadius: bytes.sent == 0 ? 4 : 0, topTrailingRadius: bytes.sent == 0 ? 4 : 0)
+          .fill(Palette.download)
+          .frame(width: max(0, downloadWidth - (bytes.sent > 0 ? 1 : 0)))
+        if bytes.sent > 0 {
+          UnevenRoundedRectangle(bottomTrailingRadius: 4, topTrailingRadius: 4)
+            .fill(Palette.upload)
+            .frame(width: max(2, width - downloadWidth - 1))
+        }
+      }
+      .frame(height: 12)
+      .frame(maxHeight: .infinity)
+    }
+    .frame(height: 20)
+  }
+}
+
 struct Card<Content: View>: View {
   @ViewBuilder let content: Content
 

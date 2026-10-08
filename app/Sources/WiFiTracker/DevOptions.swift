@@ -39,7 +39,7 @@ enum DevOptions {
     let delay = Double(environment["WIFITRACKER_SNAPSHOT_DELAY"] ?? "") ?? 8
     try? await Task.sleep(for: .seconds(delay))
 
-    let height = Double(environment["WIFITRACKER_SNAPSHOT_HEIGHT"] ?? "") ?? 1060
+    let height = Double(environment["WIFITRACKER_SNAPSHOT_HEIGHT"] ?? "") ?? 1600
     let host = NSHostingView(rootView: DashboardView().environment(monitor))
     let window = NSWindow(
       contentRect: NSRect(x: -20_000, y: -20_000, width: 980, height: height),

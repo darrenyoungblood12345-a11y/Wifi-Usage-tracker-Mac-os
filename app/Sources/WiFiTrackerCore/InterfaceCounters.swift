@@ -19,6 +19,10 @@ public struct ByteCounters: Equatable, Hashable, Sendable {
     ByteCounters(received: lhs.received + rhs.received, sent: lhs.sent + rhs.sent)
   }
 
+  public static func += (lhs: inout ByteCounters, rhs: ByteCounters) {
+    lhs = lhs + rhs
+  }
+
   /// Bytes transferred since `previous`. Kernel counters only go backwards when an
   /// interface is reset, in which case everything in the new reading is new traffic.
   public func delta(since previous: ByteCounters) -> ByteCounters {

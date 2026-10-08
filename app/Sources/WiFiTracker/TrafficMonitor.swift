@@ -11,7 +11,7 @@ struct RateSample: Identifiable, Equatable, Sendable {
 }
 
 /// Samples the Wi-Fi interface's byte counters every second, publishes live speeds,
-/// and records usage per minute and network.
+/// and records usage per minute and network (and, through `apps`, per hour and app).
 @MainActor
 @Observable
 final class TrafficMonitor {
@@ -29,6 +29,7 @@ final class TrafficMonitor {
 
   let wifi: WiFiInfo
   let store: UsageStore?
+  let apps = AppTrafficMonitor()
 
   @ObservationIgnored private var previous: ByteCounters?
   @ObservationIgnored private var previousInterface: String?
@@ -58,11 +59,15 @@ final class TrafficMonitor {
     }
   }
 
-  func start() {
+  /// Pass `tracksApps: false` to leave per-app sampling off (website snapshots use demo app data).
+  func start(tracksApps: Bool = true) {
     guard loop == nil else { return }
     try? store?.compact(olderThan: .now.addingTimeInterval(-30 * 86_400))
     refreshTotals()
     catchUpSinceLastRun()
+    if tracksApps {
+      apps.start()
+    }
 
     terminationObserver = NotificationCenter.default.addObserver(
       forName: NSApplication.willTerminateNotification, object: nil, queue: .main
@@ -86,6 +91,8 @@ final class TrafficMonitor {
       try store.add(records)
       pending = [:]
       saveCheckpoint()
+      try store.addAppUsage(apps.pendingRecords)
+      apps.clearPending()
       totals = try store.periodTotals()
       historyRevision += 1
       storeError = nil
@@ -97,6 +104,7 @@ final class TrafficMonitor {
   func clearHistory() throws {
     try store?.deleteAll()
     pending = [:]
+    apps.clearPending()
     totals = .zero
     historyRevision += 1
   }

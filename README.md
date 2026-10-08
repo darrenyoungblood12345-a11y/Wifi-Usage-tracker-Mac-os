@@ -10,8 +10,9 @@ A tiny native macOS app that shows live Wi-Fi download and upload speeds in the 
 
 - **Menu bar speeds**: ↓/↑ every second, in MB/s or Mbps (or a combined figure, or just an icon).
 - **Dashboard**: a live chart (1/5/15 min), totals for today/week/month/all time, and a history chart for the last 24 hours, 7 days, 30 days or 12 months, with hover tooltips and a table view.
+- **Per-app usage**: every app that used Wi-Fi, from most to least, for the last 24 hours, 7 days, 30 days or 12 months, with each app's live speed (like Activity Monitor's Network tab). Helpers count as their app, so Chrome is one row.
 - **Per-network usage**: splits usage by Wi-Fi name. Optional: macOS only reveals the SSID to apps with Location access.
-- **Accurate**: reads the kernel's 64-bit interface counters (the same source as `netstat -ib`). If you quit the app, it catches up on the traffic it missed when it next opens (same boot session).
+- **Accurate**: reads the kernel's 64-bit interface counters (the same source as `netstat -ib`). If you quit the app, it catches up on the traffic it missed when it next opens (same boot session). Per-app figures come from `nettop` snapshots every 2 s (one costs ~15 ms of CPU; a long-running `nettop` costs over 100%); Wi-Fi traffic no app accounts for, mostly packet headers, is shown as "Other traffic".
 - **Private**: no network calls and no account. History is in `~/Library/Application Support/WiFiTracker/usage.sqlite`, with Export CSV and Clear History in Settings.
 
 ## Install
@@ -53,7 +54,7 @@ This writes `dashboard-light.png` and `dashboard-light.popover.png`, then quits.
 
 ```
 app/
-  Sources/WiFiTrackerCore/   counters (IFMIB sysctl), SQLite store, aggregation, formatting — no UI, unit tested
+  Sources/WiFiTrackerCore/   counters (IFMIB sysctl), nettop parsing + per-socket deltas, SQLite store, aggregation, formatting — no UI, unit tested
   Sources/WiFiTracker/       SwiftUI app: menu bar extra, dashboard, settings, Swift Charts
   Tests/                     Swift Testing suites
   Resources/                 Info.plist, entitlements, app icon

@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WiFi Tracker for Mac</title>
-  <meta name="description" content="A tiny native Mac app that shows live Wi-Fi download and upload speeds in your menu bar and keeps a private history of your usage, per network.">
+  <meta name="description" content="A tiny native Mac app that shows live Wi-Fi download and upload speeds in your menu bar and keeps a private history of your usage, per app and per network.">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content="WiFi Tracker for Mac">
-  <meta property="og:description" content="Live Wi-Fi speeds in your menu bar and a private history of every megabyte, per network.">
+  <meta property="og:description" content="Live Wi-Fi speeds in your menu bar and a private history of every megabyte, per app and per network.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://darrenyoungblood12345-a11y.github.io/Wifi-Usage-tracker-Mac-os/">
   <meta property="og:image" content="https://darrenyoungblood12345-a11y.github.io/Wifi-Usage-tracker-Mac-os/assets/dashboard-light.png">
@@ -41,7 +41,7 @@
       <div class="hero-copy">
         <p class="eyebrow">For macOS 14 Sonoma and later</p>
         <h1>See exactly where your Wi-Fi goes.</h1>
-        <p class="lede">WiFi Tracker puts live download and upload speeds in your menu bar and keeps a private, minute-by-minute history of every megabyte, split by network.</p>
+        <p class="lede">WiFi Tracker puts live download and upload speeds in your menu bar and keeps a private, minute-by-minute history of every megabyte, split by app and by network.</p>
         <div class="cta-row">
           <a class="button" data-download href="https://github.com/darrenyoungblood12345-a11y/Wifi-Usage-tracker-Mac-os/releases/latest/download/WiFiTracker.dmg">
             <svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -111,14 +111,14 @@
     <section class="showcase container" aria-labelledby="showcase-title">
       <div class="section-head">
         <h2 id="showcase-title">Your whole connection, at a glance</h2>
-        <p>Open the dashboard for live speed, today/week/month totals, hourly-to-monthly history and a per-network breakdown. Hover any bar or point for exact numbers, or flip to a table.</p>
+        <p>Open the dashboard for live speed, today/week/month totals, hourly-to-monthly history, a per-network breakdown, and every app ranked by how much it used. Hover any bar or point for exact numbers, or flip to a table.</p>
       </div>
       <div class="window">
         <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>WiFi Tracker</span></div>
         <picture>
           <source srcset="assets/dashboard-dark.png" media="(prefers-color-scheme: dark)">
-          <img src="assets/dashboard-light.png" width="980" height="1060" loading="lazy"
-               alt="The WiFi Tracker dashboard: live download and upload speed chart, totals for today, this week, this month and all time, a 24-hour usage history bar chart and usage per Wi-Fi network.">
+          <img src="assets/dashboard-light.png" width="980" height="1600" loading="lazy"
+               alt="The WiFi Tracker dashboard: live download and upload speed chart, totals for today, this week, this month and all time, a 24-hour usage history bar chart, usage per Wi-Fi network, and apps ranked by usage with Safari and Chrome at the top.">
         </picture>
       </div>
     </section>
@@ -140,8 +140,8 @@
         </article>
         <article class="feature">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.8 12.4a9.5 9.5 0 0 1 12.4 0M9.1 15.8a4.7 4.7 0 0 1 5.8 0"/><circle cx="12" cy="19.2" r="1"/></svg>
-          <h3>Usage per network</h3>
-          <p>See how much went over home, office or café Wi-Fi. Handy for hotspots and capped plans.</p>
+          <h3>Per app and per network</h3>
+          <p>See which apps use the most data, with each one’s live speed, and how much went over home, office or café Wi-Fi.</p>
         </article>
         <article class="feature">
           <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
@@ -206,7 +206,7 @@
       </details>
       <details>
         <summary>What exactly does it count?</summary>
-        <p>All traffic on your Mac’s Wi-Fi interface (usually <code>en0</code>), including VPN traffic that travels over Wi-Fi. Ethernet and iPhone USB tethering aren’t counted.</p>
+        <p>All traffic on your Mac’s Wi-Fi interface (usually <code>en0</code>), including VPN traffic that travels over Wi-Fi. Ethernet and iPhone USB tethering aren’t counted. Per-app figures come from macOS’s own connection statistics (the same source as <code>nettop</code>), sampled every 2 seconds; Wi-Fi traffic that can’t be tied to an app, such as packet headers, is listed as “Other traffic” so the list always adds up.</p>
       </details>
       <details>
         <summary>What if the app isn’t running?</summary>

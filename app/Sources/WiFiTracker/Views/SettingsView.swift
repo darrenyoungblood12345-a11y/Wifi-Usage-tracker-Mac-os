@@ -36,7 +36,7 @@ struct SettingsView: View {
 
       Section("Network names") {
         LabeledContent("Location access") {
-          if monitor.wifi.canReadNetworkNames {
+          if monitor.wifi.hasLocationPermission {
             Text("Allowed").foregroundStyle(.secondary)
           } else {
             Button("Allow…") { monitor.wifi.requestNetworkNames() }
@@ -45,12 +45,19 @@ struct SettingsView: View {
         Text("Needed by macOS to read the Wi-Fi name. Your location is never read.")
           .font(.caption)
           .foregroundStyle(.secondary)
+        LabeledContent("Network name", value: monitor.wifi.ssid ?? "Unavailable")
+        if let reason = monitor.wifi.nameAvailabilityMessage {
+          Text(reason).font(.caption).foregroundStyle(.secondary)
+          if monitor.wifi.hasLocationPermission {
+            Button(monitor.wifi.requestNamesButtonTitle) { monitor.wifi.requestNetworkNames() }
+          }
+        }
       }
 
       Section("Data") {
         LabeledContent("Stored at") {
-          Button(UsageStore.defaultURL.deletingLastPathComponent().path(percentEncoded: false)) {
-            NSWorkspace.shared.activateFileViewerSelecting([UsageStore.defaultURL])
+          Button(monitor.storeURL.deletingLastPathComponent().path(percentEncoded: false)) {
+            NSWorkspace.shared.activateFileViewerSelecting([monitor.storeURL])
           }
           .buttonStyle(.link)
           .lineLimit(1)
@@ -63,6 +70,9 @@ struct SettingsView: View {
         }
         if let message {
           Text(message).font(.caption).foregroundStyle(.secondary)
+        }
+        if let error = monitor.storeError {
+          Text(error).font(.caption).foregroundStyle(.red)
         }
       }
     }

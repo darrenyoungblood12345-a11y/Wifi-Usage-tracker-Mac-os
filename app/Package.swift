@@ -17,5 +17,9 @@ let package = Package(
       name: "WiFiTrackerCoreTests",
       dependencies: ["WiFiTrackerCore"]
     ),
+    .testTarget(
+      name: "WiFiTrackerTests",
+      dependencies: ["WiFiTracker"]
+    ),
   ]
 )

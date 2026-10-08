@@ -28,5 +28,27 @@ _Patterns learned from corrections. Review at session start._
 - **Measure a tool's steady-state cost before building on it.** `nettop` in logging mode (`-L 0`) busy-polls at
   ~130% CPU even with `-s`/`-c`; a one-shot `-L 1` costs ~15 ms. Its per-process figures only sum currently open
   sockets (they drop when a connection closes), so diff per socket, never per process.
-- **Website screenshots must not leak the developer's SSID.** A bundle with Location access shows the real network
-  name; render shots with the unbundled release binary (no bundle ID → no Location) and check the header.
+- **Website screenshots must not leak the developer's SSID.** A preview can read the real network name even
+  when authorization metadata suggests otherwise. Use explicit demo data and a demo header, then inspect
+  the rendered artifact; an unbundled binary does not reliably prevent name access.
+
+## 2026-10-08 — Delayed per-network usage
+
+- **Treat "missing network" as a timing and identity question.** The user clarified that the network appeared
+  after about 15 minutes. Rule: inspect the saved timeline and distinguish counter sampling, SSID availability,
+  buffering, persistence, and view reload before choosing a fix. Traffic can continue under a generic label
+  while the named row is absent; a permission flag alone does not prove that the SSID is readable.
+- **Correlate long recording gaps with system sleep before blaming background throttling.** This database's
+  long morning gaps lined up with sleep/dark-wake. Rule: establish an awake-state stall with timing evidence
+  before adding activity assertions or changing power behavior.
+
+- **A signature check does not prove macOS will launch the app.** Adding `com.apple.wifi.events` passed
+  codesign verification but caused AMFI -424 on launch because the default build is ad-hoc signed.
+  Rule: test launch with the project's real signing mode before depending on restricted entitlements;
+  keep a documented polling fallback for network events.
+- **Use observed SSID availability for the UI.** A verification process returned a readable name while
+  CLLocationManager reported not determined. Rule: treat the actual name read as availability, retain
+  authorization as a separate diagnostic/action state, and verify preview artifacts for private names.
+- **Use a sleep-inclusive monotonic clock for traffic rates.** systemUptime can exclude sleep while kernel
+  counters accrue traffic. Rule: preserve ContinuousClock timing and suppress live rates for recovered gaps;
+  keep the bytes in usage without inventing a current speed or peak.

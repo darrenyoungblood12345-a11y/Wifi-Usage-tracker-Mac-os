@@ -72,6 +72,13 @@ struct MenuBarPopover: View {
 
       Divider()
 
+      if let error = monitor.storeError {
+        Label(error, systemImage: "exclamationmark.triangle")
+          .font(.caption)
+          .foregroundStyle(.red)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
       VStack(spacing: 2) {
         MenuRow(title: "Open Dashboard", systemImage: "chart.bar.xaxis") {
           openWindow(id: WindowID.dashboard)

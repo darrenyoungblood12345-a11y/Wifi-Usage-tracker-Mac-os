@@ -40,9 +40,10 @@ enum DevOptions {
     try? await Task.sleep(for: .seconds(delay))
 
     let height = Double(environment["WIFITRACKER_SNAPSHOT_HEIGHT"] ?? "") ?? 1600
+    let width = Double(environment["WIFITRACKER_SNAPSHOT_WIDTH"] ?? "") ?? 980
     let host = NSHostingView(rootView: DashboardView().environment(monitor))
     let window = NSWindow(
-      contentRect: NSRect(x: -20_000, y: -20_000, width: 980, height: height),
+      contentRect: NSRect(x: -20_000, y: -20_000, width: width, height: height),
       styleMask: [.borderless], backing: .buffered, defer: false
     )
     window.appearance = NSApp.effectiveAppearance

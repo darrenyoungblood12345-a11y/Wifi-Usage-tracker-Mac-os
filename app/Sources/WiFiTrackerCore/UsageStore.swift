@@ -57,15 +57,8 @@ public final class UsageStore: @unchecked Sendable {
     }
     db = handle
     try execute("PRAGMA journal_mode = WAL")
-    try execute("""
-      CREATE TABLE IF NOT EXISTS usage (
-        bucket  INTEGER NOT NULL,
-        network TEXT    NOT NULL,
-        rx      INTEGER NOT NULL DEFAULT 0,
-        tx      INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (bucket, network)
-      ) WITHOUT ROWID
-      """)
+    try createUsageTable()
+    try migrateUsageAttribution()
     try execute("""
       CREATE TABLE IF NOT EXISTS app_usage (
         bucket INTEGER NOT NULL,
@@ -75,6 +68,12 @@ public final class UsageStore: @unchecked Sendable {
         tx     INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (bucket, app)
       ) WITHOUT ROWID
+      """)
+    try execute("""
+      CREATE TABLE IF NOT EXISTS counter_checkpoint (
+        id      INTEGER PRIMARY KEY CHECK (id = 1),
+        payload TEXT NOT NULL
+      )
       """)
   }
 
@@ -86,21 +85,30 @@ public final class UsageStore: @unchecked Sendable {
 
   /// Adds records to whatever is already stored for the same bucket and network.
   public func add(_ records: [UsageRecord]) throws {
-    guard !records.isEmpty else { return }
+    try add(records, checkpoint: nil)
+  }
+
+  /// Commits usage and the counters it covers together, including a baseline with no new usage.
+  public func add(_ records: [UsageRecord], checkpoint: CounterCheckpoint?) throws {
+    guard !records.isEmpty || checkpoint != nil else { return }
     try locked {
       try transaction {
         try withStatement("""
-          INSERT INTO usage (bucket, network, rx, tx) VALUES (?, ?, ?, ?)
-          ON CONFLICT (bucket, network) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
+          INSERT INTO usage (bucket, network, rx, tx, unattributed) VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT (bucket, network, unattributed) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
           """) { statement in
           try records.forEach { record in
             sqlite3_bind_int64(statement, 1, seconds(record.bucket))
             sqlite3_bind_text(statement, 2, record.network, -1, sqliteTransient)
             sqlite3_bind_int64(statement, 3, Int64(clamping: record.bytes.received))
             sqlite3_bind_int64(statement, 4, Int64(clamping: record.bytes.sent))
+            sqlite3_bind_int(statement, 5, record.isUnattributed ? 1 : 0)
             try step(statement)
             sqlite3_reset(statement)
           }
+        }
+        if let checkpoint {
+          try writeCheckpoint(checkpoint)
         }
       }
     }
@@ -134,11 +142,11 @@ public final class UsageStore: @unchecked Sendable {
     try locked {
       try transaction {
         try withStatement("""
-          INSERT INTO usage (bucket, network, rx, tx)
-          SELECT (bucket / 3600) * 3600 AS hour, network, SUM(rx), SUM(tx)
+          INSERT INTO usage (bucket, network, rx, tx, unattributed)
+          SELECT (bucket / 3600) * 3600 AS hour, network, SUM(rx), SUM(tx), unattributed
           FROM usage WHERE bucket < ?1 AND bucket % 3600 != 0
-          GROUP BY hour, network
-          ON CONFLICT (bucket, network) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
+          GROUP BY hour, network, unattributed
+          ON CONFLICT (bucket, network, unattributed) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
           """) { statement in
           sqlite3_bind_int64(statement, 1, seconds(cutoff))
           try step(statement)
@@ -151,20 +159,37 @@ public final class UsageStore: @unchecked Sendable {
     }
   }
 
-  public func deleteAll() throws {
+  /// Clears history and saves a new counter baseline so cleared bytes cannot be recovered on restart.
+  public func deleteAll(checkpoint: CounterCheckpoint? = nil) throws {
     try locked {
       try transaction {
         try execute("DELETE FROM usage")
         try execute("DELETE FROM app_usage")
+        try execute("DELETE FROM counter_checkpoint")
+        if let checkpoint {
+          try writeCheckpoint(checkpoint)
+        }
       }
     }
   }
 
   // MARK: Reads
 
+  public func checkpoint() throws -> CounterCheckpoint? {
+    try locked {
+      let payload = try withStatement("SELECT payload FROM counter_checkpoint WHERE id = 1") { statement in
+        try rows(statement) { row in
+          sqlite3_column_text(row, 0).map { String(cString: $0) } ?? ""
+        }.first
+      }
+      guard let payload else { return nil }
+      return try JSONDecoder().decode(CounterCheckpoint.self, from: Data(payload.utf8))
+    }
+  }
+
   public func records(in interval: DateInterval) throws -> [UsageRecord] {
     try locked {
-      try withStatement("SELECT bucket, network, rx, tx FROM usage WHERE bucket >= ?1 AND bucket < ?2 ORDER BY bucket") { statement in
+      try withStatement("SELECT bucket, network, rx, tx, unattributed FROM usage WHERE bucket >= ?1 AND bucket < ?2 ORDER BY bucket, network, unattributed") { statement in
         sqlite3_bind_int64(statement, 1, seconds(interval.start))
         sqlite3_bind_int64(statement, 2, seconds(interval.end))
         return try rows(statement, map: record(from:))
@@ -174,7 +199,7 @@ public final class UsageStore: @unchecked Sendable {
 
   public func allRecords() throws -> [UsageRecord] {
     try locked {
-      try withStatement("SELECT bucket, network, rx, tx FROM usage ORDER BY bucket, network") { statement in
+      try withStatement("SELECT bucket, network, rx, tx, unattributed FROM usage ORDER BY bucket, network, unattributed") { statement in
         try rows(statement, map: record(from:))
       }
     }
@@ -231,15 +256,55 @@ public final class UsageStore: @unchecked Sendable {
   /// CSV of every stored bucket, oldest first.
   public func exportCSV() throws -> String {
     let formatter = ISO8601DateFormatter()
-    let header = "bucket_start,network,downloaded_bytes,uploaded_bytes"
+    let header = "bucket_start,network,downloaded_bytes,uploaded_bytes,unattributed"
     let lines = try allRecords().map { record in
-      [formatter.string(from: record.bucket), csvField(record.network), String(record.bytes.received), String(record.bytes.sent)]
+      [formatter.string(from: record.bucket), csvField(record.network), String(record.bytes.received), String(record.bytes.sent), record.isUnattributed ? "1" : "0"]
         .joined(separator: ",")
     }
     return ([header] + lines).joined(separator: "\n") + "\n"
   }
 
   // MARK: SQLite helpers
+
+  private func createUsageTable() throws {
+    try execute("""
+      CREATE TABLE IF NOT EXISTS usage (
+        bucket       INTEGER NOT NULL,
+        network      TEXT    NOT NULL,
+        rx           INTEGER NOT NULL DEFAULT 0,
+        tx           INTEGER NOT NULL DEFAULT 0,
+        unattributed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (bucket, network, unattributed)
+      ) WITHOUT ROWID
+      """)
+  }
+
+  private func migrateUsageAttribution() throws {
+    let columns = try withStatement("PRAGMA table_info(usage)") { statement in
+      try rows(statement) { row in
+        sqlite3_column_text(row, 1).map { String(cString: $0) } ?? ""
+      }
+    }
+    guard !columns.contains("unattributed") else { return }
+    try transaction {
+      try execute("ALTER TABLE usage RENAME TO usage_legacy")
+      try createUsageTable()
+      // Legacy fallback labels cannot be distinguished from real SSIDs; preserve them verbatim.
+      try execute("INSERT INTO usage (bucket, network, rx, tx, unattributed) SELECT bucket, network, rx, tx, 0 FROM usage_legacy")
+      try execute("DROP TABLE usage_legacy")
+    }
+  }
+
+  private func writeCheckpoint(_ checkpoint: CounterCheckpoint) throws {
+    let payload = String(decoding: try JSONEncoder().encode(checkpoint), as: UTF8.self)
+    try withStatement("""
+      INSERT INTO counter_checkpoint (id, payload) VALUES (1, ?1)
+      ON CONFLICT (id) DO UPDATE SET payload = excluded.payload
+      """) { statement in
+      sqlite3_bind_text(statement, 1, payload, -1, sqliteTransient)
+      try step(statement)
+    }
+  }
 
   private func locked<T>(_ body: () throws -> T) rethrows -> T {
     lock.lock()
@@ -291,7 +356,8 @@ public final class UsageStore: @unchecked Sendable {
       bytes: ByteCounters(
         received: UInt64(clamping: sqlite3_column_int64(row, 2)),
         sent: UInt64(clamping: sqlite3_column_int64(row, 3))
-      )
+      ),
+      isUnattributed: sqlite3_column_int(row, 4) != 0
     )
   }
 

@@ -11,8 +11,8 @@ A tiny native macOS app that shows live Wi-Fi download and upload speeds in the 
 - **Menu bar speeds**: ↓/↑ every second, in MB/s or Mbps (or a combined figure, or just an icon).
 - **Dashboard**: a live chart (1/5/15 min), totals for today/week/month/all time, and a history chart for the last 24 hours, 7 days, 30 days or 12 months, with hover tooltips and a table view.
 - **Per-app usage**: every app that used Wi-Fi, from most to least, for the last 24 hours, 7 days, 30 days or 12 months, with each app's live speed (like Activity Monitor's Network tab). Helpers count as their app, so Chrome is one row.
-- **Per-network usage**: splits usage by Wi-Fi name. Optional: macOS only reveals the SSID to apps with Location access.
-- **Accurate**: reads the kernel's 64-bit interface counters (the same source as `netstat -ib`). If you quit the app, it catches up on the traffic it missed when it next opens (same boot session). Per-app figures come from `nettop` snapshots every 2 s (one costs ~15 ms of CPU; a long-running `nettop` costs over 100%); Wi-Fi traffic no app accounts for, mostly packet headers, is shown as "Other traffic".
+- **Per-network usage**: splits usage by Wi-Fi name and updates on each sample, including traffic not yet saved to disk. macOS requires enabled Location Services and app Location access to reveal the SSID. Missing names and uncertain network-switch intervals appear as "Unattributed Wi-Fi", with an explanation in the dashboard.
+- **Accurate**: reads the kernel's 64-bit interface counters (the same source as `netstat -ib`). If you quit the app, it catches up on the traffic it missed when it next opens (same boot session and interface); recovered traffic is unattributed because interface counters cannot tell which networks were used while the app was closed. Usage and the counter checkpoint are saved together to prevent double-counting after a crash. Per-app figures come from `nettop` snapshots every 2 s (one costs ~15 ms of CPU; a long-running `nettop` costs over 100%); Wi-Fi traffic no app accounts for, mostly packet headers, is shown as "Other traffic".
 - **Private**: no network calls and no account. History is in `~/Library/Application Support/WiFiTracker/usage.sqlite`, with Export CSV and Clear History in Settings.
 
 ## Install
@@ -37,6 +37,14 @@ Requires Xcode 16+ (Swift 6). Everything is driven by scripts, and you can also 
 | `scripts/make-icon.sh` | Regenerates `AppIcon.icns` and the website icon from `scripts/make-icon.swift`. |
 
 Build products live outside the project folder: iCloud-synced Desktop/Documents folders add extended attributes that break code signing.
+
+For local timing diagnostics, launch an isolated build with `WIFITRACKER_STORE=/tmp/wifi-review/usage.sqlite`
+and `WIFITRACKER_DIAGNOSTICS=1`. JSON lines on stderr report counter samples, name availability,
+authorization, save/reload timing, and sleep/wake. They contain no network names or location fixes.
+Never run a second tracker against the real database. CSV exports include an `unattributed` column (`0`/`1`).
+Existing history is preserved; older generic `Wi-Fi` entries cannot be reliably reassigned to a named network.
+The first run after upgrading starts a fresh checkpoint rather than importing the older, potentially stale
+UserDefaults checkpoint. Subsequent runs recover from the checkpoint stored with the database.
 
 ### Website screenshots
 

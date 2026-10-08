@@ -224,7 +224,13 @@ User requested a PR and a new DMG after approving the implementation.
 
 - [x] Check remote main, existing PRs, release versions, and packaging scripts.
 - [x] Prepare version 1.0.1 and a focused fix branch.
-- [ ] Rerun regression tests and build a fresh universal DMG from the committed application changes.
-- [ ] Mount the installer read-only and verify its version, architectures, and signature.
-- [ ] Push the branch, create the PR against main, and attach it to this chat.
-- [ ] Provide the PR and local installer links.
+- [x] Rerun regression tests and build a fresh universal DMG from the committed application changes.
+- [x] Mount the installer read-only and verify its version, architectures, and signature.
+- [x] Push the branch, create the PR against main, and attach it to this chat.
+- [x] Provide the PR and local installer links.
+
+Review: all 93 tests pass again. The fresh DMG contains version 1.0.1 (build 6), arm64 and x86_64;
+its signature verifies and its executable matches the universal build. The read-only mount was detached.
+DMG SHA-256: `b70131bad5695bfebaf6e6ed322056dbb8feff244d0b549c0d3b31421a970d72`.
+Installer: `dist/WiFiTracker.dmg`.
+PR: https://github.com/darrenyoungblood12345-a11y/Wifi-Usage-tracker-Mac-os/pull/2

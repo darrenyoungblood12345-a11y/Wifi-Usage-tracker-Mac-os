@@ -234,3 +234,82 @@ its signature verifies and its executable matches the universal build. The read-
 DMG SHA-256: `b70131bad5695bfebaf6e6ed322056dbb8feff244d0b549c0d3b31421a970d72`.
 Installer: `dist/WiFiTracker.dmg`.
 PR: https://github.com/darrenyoungblood12345-a11y/Wifi-Usage-tracker-Mac-os/pull/2
+
+---
+
+# Landing page: critique + three sample layouts (2026-11-04)
+
+Request: `/impeccable critique`, then three sample layouts that look less AI generated. Plan approved.
+Answers: audience is curious Mac users; keep live menu bar demo, all factual copy, blue/orange, dashboard
+screenshot; three new worlds; fix critique bugs in the samples only.
+
+- [x] Critique: 25/36 (Acceptable), snapshot in `.impeccable/critique/`
+- [x] PRODUCT.md (init record)
+- [x] `landing/samples/shared/live.js` (one simulator, tab-return backfill, reduced-motion note) + chooser
+- [x] A · Statement (`landing/samples/statement/`)
+- [x] B · Meter (`landing/samples/meter/`)
+- [x] C · Poster (`landing/samples/poster/`)
+- [x] Verify: 1440/375, light/dark, console, overflow, interactions, contrast, tab-return; detector
+- [x] Production `landing/index.html`, `styles.css`, `main.js` unchanged
+
+## Review
+
+- Open `/samples/` on the `landing` preview server (port 4173). Each sample keeps all factual copy, the live
+  menu bar + popover, blue/orange, and the dashboard screenshot; every live figure is labeled simulated.
+- All three, at 1440 and 375, light and dark: no console errors, no horizontal overflow, and every text
+  element ≥4.5:1 (≥3:1 for large text). Gradient-backed meter drums are checked separately: 10.6:1 and 4.8:1.
+- Fixes in all samples: the Gatekeeper line sits under the primary download button, "View source" is a
+  text link, buttons pass contrast in dark mode, a note shows for non-Mac visitors, and reduced motion
+  keeps the figures updating with a visible note.
+- Shared feed checked in Node with stubbed timers: a 45 s background gap is backfilled (chart still spans
+  61 s), apps account for every byte, networks equal the app total, and a 5 h gap is capped at the current time.
+- Interactions: the popover toggles and closes on Escape, returning focus to the menu bar item. Statement rows re-sort with
+  FLIP (TV passed FaceTime within 7 s). Poster segments show a tooltip on hover, click and Tab.
+  The copy button showed "Select & copy" in the preview pane even on a real click (clipboard access blocked
+  there); the "Copied" path is not verified.
+- Detector: 21 findings remain, all reviewed as false positives or intentional: cramped-padding on full-bleed bands and
+  ruled rows (inset comes from child padding), the perforation label, Meter's spec plate and
+  screenshot window read as "nested cards", and display headings at 0.95–1.0 line height. Fixed:
+  the Meter brushed-stripe texture (also removed two contrast false positives) and the multi-line heading leading.
+- Fonts load from Google Fonts in the samples; the chosen direction should self-host them.
+
+# Landing page: promote the Poster sample (2026-11-04)
+
+The user picked Poster. Promote it into the live page files, self-host its font, record the direction, then
+finish review and DESIGN.md.
+
+- [x] `landing/index.html`, `styles.css`, `main.js` from Poster (+ `samples/shared/live.js`, `popover.css`)
+- [x] Archivo self-hosted: `landing/fonts/archivo-latin.woff2` (latin subset, wdth 100–125, wght 400–800) + OFL.txt
+- [x] Surface brief with the direction contract: `.impeccable/surfaces/landing-index-html.md`
+- [x] Verify: font from the site itself, no console errors, no overflow at 390/1440/1600, light and dark
+- [x] Finish review (fix → verdict → one more fix → ship) and fixes
+- [x] Shipping rasters carry their origin (`embed-prompt --scan landing/assets`: 0 missing)
+- [x] DESIGN.md + `.impeccable/design.json` (documenter; north star "The Proportional Chart", names to confirm with the user)
+
+## Review
+
+- Live files are now Poster: one `main.js` (simulator + page), one `styles.css` (+ popover), local Archivo.
+  Only outside request is the GitHub release lookup the old page also made. og/twitter tags kept.
+- Finish review, first pass: fix, 8 items. Fixed:
+  - phone network rows covered their caption: own 2.4px/% scale;
+  - wide popover covered the live readouts;
+  - brief's seed line misstated why there is no seed;
+  - "0" figure became "0 calls"; the "Per app" row has no figure; title is now the `dt`;
+  - every app segment is labelled (vertical when narrow);
+  - Gatekeeper and meta lines wrap cleanly;
+  - dark menu bar has a hairline edge.
+  The "facts not on one baseline" finding was withdrawn after measuring (baselines already matched).
+- Verdict pass: all 8 resolved, plus one regression from them (the popover covered the new labels at
+  ≥1500px). Fixed: there the readouts sit under the h1 and the head is tall enough that the bar starts
+  28px below the popover. Second verdict: ship. That scores the fixes, not a fresh full-page review.
+- Checks at 390, 1440, 1500, 1600, light and dark: no console errors, no overflow; popover click/Escape,
+  segment focus tooltip, Tab between segments. Captures in `.impeccable/review/`.
+- Detector: 16 findings on `landing/index.html` (15 cramped-padding, 1 tight-leading) confirmed false
+  positives by the reviewer; suppressed for that file only in `.impeccable/config.json`.
+- `landing/samples/` removed at the user's request: moved to `~/.Trash/landing-samples-2026-11-04` (12 files, never
+  committed). Its eight checker exceptions and the brief's open item are gone. Nothing committed.
+- After DESIGN.md: the design-system checks flagged six page font sizes outside the documented scale
+  (15/16/22px). Snapped to 14/17/20px; DESIGN.md and the sidecar updated to match. The macOS popover
+  block's own values (system font, 11/12/22px, 2/6/7px radii, system green) are hidden by exact value
+  for `landing/styles.css`. (Sample-folder exceptions were removed along with the samples.)
+  Checker: 0 findings across `landing/`; recaptured, no overflow at any width.

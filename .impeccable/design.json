@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T12:00:00Z",
+  "title": "Design System: WiFi Tracker",
+  "extensions": {
+    "colorMeta": {
+      "ground": { "role": "neutral", "displayName": "Paper White", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(97% 0 0)"] },
+      "ink": { "role": "neutral", "displayName": "Press Black", "canonical": "#000000", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "ink-secondary": { "role": "neutral", "displayName": "Graphite", "canonical": "#3d3d3d", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "rgba(0, 0, 0, 0.16)" },
+      "download-blue": { "role": "primary", "displayName": "Download Blue", "canonical": "#1f5fd6", "tonalRamp": ["oklch(15% 0.05 262)", "oklch(26% 0.1 262)", "oklch(37% 0.15 262)", "oklch(48% 0.19 262)", "oklch(59% 0.17 262)", "oklch(70% 0.12 262)", "oklch(82% 0.07 262)", "oklch(95% 0.02 262)"] },
+      "upload-orange": { "role": "secondary", "displayName": "Upload Orange", "canonical": "#ee6a2f", "tonalRamp": ["oklch(15% 0.04 42)", "oklch(27% 0.08 42)", "oklch(39% 0.12 42)", "oklch(51% 0.16 42)", "oklch(64% 0.18 42)", "oklch(74% 0.13 42)", "oklch(85% 0.07 42)", "oklch(95% 0.02 42)"] },
+      "upload-ink": { "role": "secondary", "displayName": "Burnt Upload Ink", "canonical": "#c94d17", "tonalRamp": ["oklch(15% 0.04 40)", "oklch(27% 0.08 40)", "oklch(39% 0.12 40)", "oklch(51% 0.16 40)", "oklch(62% 0.16 40)", "oklch(73% 0.12 40)", "oklch(85% 0.06 40)", "oklch(95% 0.02 40)"] },
+      "band-black": { "role": "neutral", "displayName": "Band Black", "canonical": "#000000" },
+      "button-hover": { "role": "neutral", "displayName": "Pressed Black", "canonical": "#262626" },
+      "inverse-hover": { "role": "primary", "displayName": "Pale Download", "canonical": "#e6eefb" },
+      "ground-dark": { "role": "neutral", "displayName": "Night Ground", "canonical": "#0b0b0b" },
+      "ink-dark": { "role": "neutral", "displayName": "Warm Off-White", "canonical": "#f5f5f2", "tonalRamp": ["oklch(15% 0.003 100)", "oklch(27% 0.003 100)", "oklch(39% 0.004 100)", "oklch(51% 0.004 100)", "oklch(63% 0.004 100)", "oklch(75% 0.004 100)", "oklch(87% 0.004 100)", "oklch(97% 0.004 100)"] },
+      "ink-secondary-dark": { "role": "neutral", "displayName": "Ash", "canonical": "#b9b9b4" },
+      "hairline-dark": { "role": "neutral", "displayName": "Night Hairline", "canonical": "rgba(255, 255, 255, 0.2)" },
+      "download-blue-dark": { "role": "primary", "displayName": "Download Blue (dark field)", "canonical": "#2a6bd1" },
+      "download-ink-dark": { "role": "primary", "displayName": "Download Ink (dark)", "canonical": "#6ea4f2" },
+      "upload-orange-dark": { "role": "secondary", "displayName": "Upload Orange (dark field)", "canonical": "#f07a45" },
+      "upload-ink-dark": { "role": "secondary", "displayName": "Upload Ink (dark)", "canonical": "#f28a5c" },
+      "button-hover-dark": { "role": "neutral", "displayName": "Pressed Off-White", "canonical": "#d9d9d4" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline, nine columns wide; Archivo 800 at font-stretch 112%." },
+      "display-band": { "displayName": "Display Band", "purpose": "Single one-line figure in the closing blue band." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings, font-stretch 110%." },
+      "figure": { "displayName": "Figure", "purpose": "Static fact-row values, font-stretch 118%." },
+      "numeral": { "displayName": "Numeral", "purpose": "Install step counters, normal width." },
+      "readout": { "displayName": "Readout", "purpose": "Live down/up speeds, coloured by direction, normal width, tabular." },
+      "title": { "displayName": "Title", "purpose": "Fact titles, question terms and install step titles." },
+      "lede": { "displayName": "Lede", "purpose": "Hero sentence, max 34em." },
+      "body": { "displayName": "Body", "purpose": "Running text; tabular figures set globally." },
+      "caption": { "displayName": "Caption", "purpose": "Chart captions, figcaptions, Gatekeeper and meta lines, tooltips." },
+      "label": { "displayName": "Label", "purpose": "Readout labels; menu bar text at 13px." },
+      "button": { "displayName": "Button", "purpose": "Download buttons, font-stretch 105%." },
+      "mono": { "displayName": "Mono", "purpose": "Commands and file paths." }
+    },
+    "shadows": [
+      { "name": "none", "value": "none", "purpose": "Every page surface is flat. The only shadow in the build is the macOS popover specimen (0 1px 1px rgba(0,0,0,0.06), 0 10px 32px rgba(0,0,0,0.22)), which belongs to macOS, not to the page." }
+    ],
+    "motion": [
+      { "name": "share-grow", "value": "0.9s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Share-bar segments and their upload portions resizing as bytes arrive (height on narrow screens). Removed under prefers-reduced-motion." },
+      { "name": "button-hover", "value": "background-color 0.15s ease", "purpose": "Button background change on hover." },
+      { "name": "button-press", "value": "translateY(1px)", "purpose": "Button active state." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "max-width: 760px" },
+      { "name": "wide", "value": "min-width: 1500px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Square ink block for the main download action.",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\"><svg aria-hidden=\"true\" viewBox=\"0 0 20 20\" width=\"18\" height=\"18\"><path d=\"M10 3v10m0 0-4-4m4 4 4-4M4 16h12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Download for Mac</a>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 10px; padding: 15px 26px; background: var(--button, #000000); color: var(--button-ink, #ffffff); font-family: var(--font, 'Archivo', 'Helvetica Neue', Arial, sans-serif); font-size: 18px; font-weight: 700; font-stretch: 105%; text-decoration: none; border-radius: 0; transition: background-color 0.15s ease; } .ds-btn-primary:hover { background: var(--button-hover, #262626); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid var(--focus, #1f5fd6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Inverse Button",
+      "kind": "button",
+      "refersTo": "button-inverse",
+      "description": "White block with blue text, used on the blue closing band.",
+      "html": "<div class=\"ds-band-blue\"><a class=\"ds-btn-inverse\" href=\"#\"><svg aria-hidden=\"true\" viewBox=\"0 0 20 20\" width=\"18\" height=\"18\"><path d=\"M10 3v10m0 0-4-4m4 4 4-4M4 16h12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Download for Mac</a></div>",
+      "css": ".ds-band-blue { padding: 32px; background: var(--down, #1f5fd6); } .ds-btn-inverse { display: inline-flex; align-items: center; gap: 10px; padding: 15px 26px; background: #ffffff; color: #1f5fd6; font-family: var(--font, 'Archivo', 'Helvetica Neue', Arial, sans-serif); font-size: 18px; font-weight: 700; font-stretch: 105%; text-decoration: none; border-radius: 0; transition: background-color 0.15s ease; } .ds-btn-inverse:hover { background: #e6eefb; } .ds-btn-inverse:active { transform: translateY(1px); } .ds-btn-inverse:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Code Row with Copy",
+      "kind": "input",
+      "refersTo": "code-row",
+      "description": "Black command strip joined flush to a 3px outlined Copy button, inside the orange Install band.",
+      "html": "<div class=\"ds-band-orange\"><div class=\"ds-code-row\"><code>xattr -dr com.apple.quarantine \"/Applications/WiFi Tracker.app\"</code><button class=\"ds-copy\" type=\"button\">Copy</button></div></div>",
+      "css": ".ds-band-orange { padding: 32px; background: var(--up, #ee6a2f); color: #000000; } .ds-code-row { display: flex; } .ds-code-row code { flex: 1; min-width: 0; overflow-x: auto; padding: 14px 16px; background: #000000; color: #ffffff; font-family: var(--mono, ui-monospace, 'SF Mono', Menlo, monospace); font-size: 14px; white-space: nowrap; } .ds-copy { flex: none; padding: 0 22px; border: 3px solid #000000; border-radius: 0; background: transparent; color: #000000; font-family: var(--font, 'Archivo', sans-serif); font-weight: 700; cursor: pointer; } .ds-copy:hover { background: rgba(0, 0, 0, 0.1); } .ds-copy:focus-visible { outline: 3px solid #000000; outline-offset: 2px; }"
+    },
+    {
+      "name": "Menu Bar Band",
+      "kind": "nav",
+      "refersTo": "menubar",
+      "description": "Sticky 30px black band drawn like the macOS menu bar, with section links and the live status item in the app's own format.",
+      "html": "<header class=\"ds-menubar\"><a class=\"ds-mb-app\" href=\"#\">WiFi Tracker</a><nav class=\"ds-mb-menus\"><a href=\"#\">Apps</a><a href=\"#\">Networks</a><a href=\"#\">Install</a></nav><button class=\"ds-status-item\" type=\"button\">↓<span>236 KB/s</span> ↑<span>2.66 MB/s</span></button></header>",
+      "css": ".ds-menubar { display: flex; align-items: center; gap: 4px; height: 30px; padding: 0 8px; background: #000000; color: #ffffff; font-family: var(--font, 'Archivo', sans-serif); font-size: 13px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; } .ds-menubar a { padding: 3px 9px; border-radius: 4px; color: inherit; text-decoration: none; } .ds-menubar a:hover, .ds-status-item:hover { background: rgba(255, 255, 255, 0.18); } .ds-mb-app { font-weight: 800; font-stretch: 110%; } .ds-mb-menus { display: flex; } .ds-status-item { margin-left: auto; padding: 3px 8px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; } .ds-status-item span { display: inline-block; min-width: 7ch; text-align: left; } .ds-menubar :focus-visible { outline: 3px solid var(--focus, #1f5fd6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Share Bar",
+      "kind": "custom",
+      "refersTo": "share-segment-download",
+      "description": "Signature full-bleed proportional bar: segment width is byte share, blue download stacked over orange upload, labels across or on their side.",
+      "html": "<ol class=\"ds-share-bar\"><li tabindex=\"0\" style=\"--share:45;--d:9;--u:1\"><span class=\"ds-seg-down\"></span><span class=\"ds-seg-up\"></span><span class=\"ds-seg-label\"><span class=\"ds-seg-name\">Safari</span><span class=\"ds-seg-amount\">1.03 GB</span></span></li><li tabindex=\"0\" style=\"--share:30;--d:4;--u:1\"><span class=\"ds-seg-down\"></span><span class=\"ds-seg-up\"></span><span class=\"ds-seg-label\"><span class=\"ds-seg-name\">Google Chrome</span><span class=\"ds-seg-amount\">651 MB</span></span></li><li tabindex=\"0\" style=\"--share:6;--d:6;--u:1\"><span class=\"ds-seg-down\"></span><span class=\"ds-seg-up\"></span><span class=\"ds-seg-label ds-vertical\"><span class=\"ds-seg-name\">Mail</span><span class=\"ds-seg-amount\">134 MB</span></span></li></ol>",
+      "css": ".ds-share-bar { display: flex; gap: 3px; height: 220px; margin: 0; padding: 0; list-style: none; font-family: var(--font, 'Archivo', sans-serif); font-variant-numeric: tabular-nums; } .ds-share-bar li { position: relative; display: flex; flex-direction: column; flex: var(--share, 1) 1 0; min-width: 4px; transition: flex-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1); } .ds-share-bar li:focus-visible { outline: 3px solid var(--ink, #000000); outline-offset: 2px; z-index: 1; } .ds-seg-down { flex: var(--d, 1) 1 0; min-height: 2px; background: var(--down, #1f5fd6); } .ds-seg-up { flex: var(--u, 0) 1 0; min-height: 2px; background: var(--up, #ee6a2f); } .ds-share-bar li:hover .ds-seg-down, .ds-share-bar li:focus-visible .ds-seg-down { filter: brightness(1.12); } .ds-seg-label { position: absolute; top: 10px; left: 10px; right: 6px; display: grid; overflow: hidden; color: #ffffff; pointer-events: none; } .ds-seg-name { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; } .ds-seg-amount { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; } .ds-seg-label.ds-vertical { right: auto; left: 50%; display: flex; gap: 8px; writing-mode: vertical-rl; transform: translateX(-50%); } .ds-seg-label.ds-vertical .ds-seg-amount { font-size: 14px; letter-spacing: 0; }"
+    },
+    {
+      "name": "Share Tooltip",
+      "kind": "custom",
+      "refersTo": "share-tip",
+      "description": "Square ink block shown on segment hover or focus with exact totals and live rate.",
+      "html": "<p class=\"ds-share-tip\"><b>Safari · 1.03 GB</b>984 MB down · 45.2 MB up · 120 KB/s now</p>",
+      "css": ".ds-share-tip { display: inline-block; margin: 0; padding: 10px 12px; background: var(--ink, #000000); color: var(--ground, #ffffff); font-family: var(--font, 'Archivo', sans-serif); font-size: 14px; line-height: 1.4; white-space: nowrap; border-radius: 0; } .ds-share-tip b { display: block; font-size: 16px; }"
+    },
+    {
+      "name": "Fact Row",
+      "kind": "card",
+      "refersTo": "figure",
+      "description": "Ruled row (3px ink rule opens the list, 1px hairline closes each row) pairing an expanded figure, a title and secondary text.",
+      "html": "<dl class=\"ds-facts\"><div class=\"ds-fact\"><dd class=\"ds-fact-figure\">1 MB</dd><dt class=\"ds-fact-title\">Featherweight</dt><dd class=\"ds-fact-text\">A 1 MB native SwiftUI app using about 20 MB of memory.</dd></div></dl>",
+      "css": ".ds-facts { margin: 0; border-top: 3px solid var(--ink, #000000); font-family: var(--font, 'Archivo', sans-serif); color: var(--ink, #000000); } .ds-fact { display: grid; grid-template-columns: 4fr 3fr 5fr; column-gap: 24px; align-items: baseline; padding-block: 20px 22px; border-bottom: 1px solid var(--rule, rgba(0, 0, 0, 0.16)); } .ds-fact dt, .ds-fact dd { margin: 0; } .ds-fact-figure { grid-column: 1; grid-row: 1; font-size: 56px; font-weight: 800; font-stretch: 118%; letter-spacing: -0.04em; line-height: 0.9; white-space: nowrap; } .ds-fact-title { grid-column: 2; grid-row: 1; font-size: 20px; font-weight: 700; line-height: 1.3; } .ds-fact-text { grid-column: 3; grid-row: 1; color: var(--ink-2, #3d3d3d); font-size: 17px; line-height: 1.5; }"
+    },
+    {
+      "name": "Live Readout",
+      "kind": "custom",
+      "refersTo": "readout",
+      "description": "Down now / Up now speeds, normal width, tabular, coloured by direction.",
+      "html": "<p class=\"ds-now\"><span class=\"ds-now-down\"><span class=\"ds-now-label\">Down now</span><span class=\"ds-now-value\">236 KB/s</span></span><span class=\"ds-now-up\"><span class=\"ds-now-label\">Up now</span><span class=\"ds-now-value\">2.66 MB/s</span></span></p>",
+      "css": ".ds-now { display: grid; gap: 6px; margin: 0; font-family: var(--font, 'Archivo', sans-serif); font-variant-numeric: tabular-nums; color: var(--ink, #000000); } .ds-now > span { display: grid; } .ds-now-label { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; } .ds-now-value { font-size: 36px; font-weight: 750; font-stretch: 100%; letter-spacing: -0.02em; line-height: 1; } .ds-now-down .ds-now-value { color: var(--down-ink, #1f5fd6); } .ds-now-up .ds-now-value { color: var(--up-ink, #c94d17); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Proportional Chart",
+    "overview": "The site is a Swiss data-graphic printed at page scale. White ground and black ink carry everything that is not data; download blue and upload orange carry everything that is. The page's largest objects are full-bleed bars whose segment widths are bytes, and the same two colours return as whole bands (an orange Install field, a blue closing field) so the page reads as one chart from top to bottom. Typography is one family, Archivo, used heavy and expanded for display and at normal width for reading, with tabular figures throughout.\n\nDensity is poster-like: few elements, very large, flush left on a 12-column grid, separated by rules rather than boxes. Nothing floats. There are no cards, no shadows, no gradients and no rounded corners on the page's own surfaces. The only soft, layered, rounded object is the macOS menu bar popover, which is the product drawn as macOS draws it and keeps macOS's own material; it is a specimen on the page, not part of the page's component language.\n\nDark mode inverts ground and ink (near-black ground, warm off-white ink) and lifts the blue and orange slightly so the fields keep their weight; the menu bar and footer stay black in both schemes.",
+    "keyCharacteristics": [
+      "White (near-black) ground, black (off-white) ink, blue and orange as the only hues.",
+      "Full-bleed proportional share bars as the signature graphic; segments resize as bytes arrive.",
+      "Archivo 800, expanded 110–118% for headings and fact figures; normal width for text and live numbers.",
+      "12-column grid, flush left, 3px ink rules opening lists and 1px hairlines between rows.",
+      "Flat and square: no shadows, no radius, no cards outside the macOS specimen."
+    ],
+    "rules": [
+      { "name": "The Bytes Are Colour Rule", "body": "Blue is download and orange is upload, everywhere, including the app. They appear as solid data segments, full-bleed fields, keys, and the down/up readouts; never as tints, gradients, or decoration, and no third hue is introduced.", "section": "colors" },
+      { "name": "The Ink On Orange Rule", "body": "Text on upload orange is black; text on download blue is white.", "section": "colors" },
+      { "name": "The Width Rule", "body": "Headings and static fact figures run Archivo 800 expanded 110–118%. Live readouts, segment amounts and step numerals stay at normal width. Body text is never expanded.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Figures are tabular everywhere (set on the body), so live numbers change without the line moving.", "section": "typography" },
+      { "name": "The Flat Field Rule", "body": "Page surfaces are separated by colour fields and rules, never by elevation. Shadows and blur belong only to things drawn as macOS draws them.", "section": "elevation" },
+      { "name": "The Square Corner Rule", "body": "If it is the page, it is square. If it is macOS, it keeps macOS's radius.", "section": "shapes" },
+      { "name": "The Two Rules Rule", "body": "3px ink opens a list; 1px hairline separates its rows. No boxes.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do let data set size: widths and heights of share segments are byte shares, never chosen for layout.",
+      "Do keep blue for download and orange for upload in every chart, key, readout and field.",
+      "Do separate content with the 3px ink rule and 1px hairline, flush left on the 12-column grid.",
+      "Do run headings Archivo 800 expanded (wdth 110–118) and keep live numbers normal width and tabular.",
+      "Do label every segment across, then on its side, then via tooltip, as a printed chart would.",
+      "Do put black ink on orange and white ink on blue.",
+      "Do mark simulated data as \"Simulated.\" in the caption beside it."
+    ],
+    "donts": [
+      "Don't use cards, boxed containers, or drop shadows on page surfaces.",
+      "Don't round page corners; radius is reserved for elements drawn as macOS draws them.",
+      "Don't introduce a third hue, tints of blue or orange, or gradients.",
+      "Don't expand body text or set live, changing numbers in proportional figures.",
+      "Don't borrow the popover's blur, shadow, radius or system font for page components."
+    ]
+  }
+}

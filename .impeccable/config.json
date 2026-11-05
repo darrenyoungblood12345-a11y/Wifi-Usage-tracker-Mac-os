@@ -1,0 +1,98 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "landing/index.html"
+        ],
+        "createdAt": "2026-11-05T05:01:34.357Z",
+        "reason": "Claude review 2026-11-04: promoted Poster page; same elements as the suppressed Poster sample. Full-bleed colour bands (install, closing) and hairline-ruled fact and Q&A rows get their inset from the 16-44px grid margin and 18-22px row padding, visible in .impeccable/review captures at 390, 1440 and 1600"
+      },
+      {
+        "rule": "tight-leading",
+        "value": "*",
+        "files": [
+          "landing/index.html"
+        ],
+        "createdAt": "2026-11-05T05:01:34.384Z",
+        "reason": "Claude review 2026-11-04: promoted Poster page; only single-line display type (44-200px h1, figures, numerals) and nowrap segment amounts sit at 0.85-1.1; body and multi-line headings measure 1.3 or more"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "sf pro text",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.076Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "11px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.106Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "12px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.130Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "22px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.154Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.179Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "6px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.204Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "7px",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.228Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#34c759",
+        "files": [
+          "landing/styles.css"
+        ],
+        "createdAt": "2026-11-05T05:17:17.252Z",
+        "reason": "Claude review 2026-11-04: the macOS popover block in landing/styles.css draws the app's own popover as macOS does (system font, 11-12px and 22px type, 2/6/7px radii, system green); DESIGN.md documents it as the one exception, and no page component uses these values"
+      }
+    ]
+  }
+}

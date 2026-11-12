@@ -90,7 +90,8 @@ public struct SocketDeltaTracker: Sendable {
 
   private struct Seen: Sendable {
     var bytes: ByteCounters
-    var date: Date
+    /// The first snapshot that lacked the socket, or nil while the latest one has it.
+    var missingSince: Date?
   }
 
   private var sockets: [Key: Seen] = [:]
@@ -104,10 +105,14 @@ public struct SocketDeltaTracker: Sendable {
 
   /// Bytes moved per process since the previous snapshot. The first snapshot only sets the baseline.
   public mutating func update(_ samples: [SocketSample], at date: Date) -> [ProcessTraffic] {
-    sockets = sockets.filter { date.timeIntervalSince($0.value.date) <= memory }
+    // Only time spent missing from snapshots ages a socket out. One that was in the previous
+    // snapshot keeps its counters however long ago that was (sleep, failed samples), or everything
+    // it has ever moved would count again.
+    sockets = sockets.filter { $0.value.missingSince.map { date.timeIntervalSince($0) <= memory } ?? true }
     let traffic = hasBaseline ? samples.map { ($0, growth(of: $0)) } : []
     hasBaseline = true
-    samples.forEach { sockets[Key(pid: $0.pid, socket: $0.socket)] = Seen(bytes: $0.bytes, date: date) }
+    sockets = sockets.mapValues { Seen(bytes: $0.bytes, missingSince: $0.missingSince ?? date) }
+    samples.forEach { sockets[Key(pid: $0.pid, socket: $0.socket)] = Seen(bytes: $0.bytes, missingSince: nil) }
 
     return traffic
       .filter { $0.1.total > 0 }

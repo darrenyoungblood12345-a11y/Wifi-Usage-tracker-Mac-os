@@ -92,6 +92,23 @@ struct SocketDeltaTrackerTests {
     #expect(tracker.update([socket(1, 5000, rx: 40)], at: start + 20).map(\.bytes.received) == [40])
   }
 
+  @Test("a socket still open after a sampling gap longer than the memory window only counts its growth")
+  func survivesSamplingGap() {
+    var tracker = SocketDeltaTracker(memory: 10)
+    _ = tracker.update([socket(1, 5000, rx: 1_000, tx: 100)], at: start)
+    // No snapshots for a while (sleep, failed samples), and the socket moved nothing meanwhile.
+    #expect(tracker.update([socket(1, 5000, rx: 1_000, tx: 100)], at: start + 600).isEmpty)
+    #expect(tracker.update([socket(1, 5000, rx: 1_250, tx: 100)], at: start + 602).map(\.bytes.received) == [250])
+  }
+
+  @Test("a socket that drops out briefly right after a sampling gap is still remembered")
+  func dropsOutAfterSamplingGap() {
+    var tracker = SocketDeltaTracker(memory: 10)
+    _ = tracker.update([socket(1, 5000, rx: 1_000)], at: start)
+    #expect(tracker.update([], at: start + 600).isEmpty)
+    #expect(tracker.update([socket(1, 5000, rx: 1_030)], at: start + 602).map(\.bytes.received) == [30])
+  }
+
   @Test("a count that goes backwards resets the baseline instead of counting")
   func countWentBackwards() {
     var tracker = SocketDeltaTracker()
@@ -136,15 +153,22 @@ struct AppUsageListTests {
     #expect(list.map(\.bytes.received) == [700, 500, 100])
   }
 
-  @Test("adds Wi-Fi traffic the saved app usage doesn't cover as a last Other row")
+  @Test("adds Wi-Fi traffic that neither saved nor unsaved app usage covers as a last Other row")
   func otherTraffic() {
     let list = appUsageList(
       stored: [usage("a", rx: 100, tx: 50)],
       pending: [usage("b", rx: 1_000)],
-      wifiTotal: ByteCounters(received: 160, sent: 40)
+      wifiTotal: ByteCounters(received: 1_160, sent: 40)
     )
     #expect(list.map(\.id) == ["b", "a", AppUsage.otherID])
     #expect(list.last?.bytes == ByteCounters(received: 60, sent: 0))
+  }
+
+  @Test("unsaved app usage that the Wi-Fi total already includes isn't listed again as Other")
+  func unsavedAppsAreNotOther() {
+    // What a failed app-history save leaves behind: the Wi-Fi bytes are saved, the app's are not.
+    let list = appUsageList(stored: [], pending: [usage("b", rx: 1_000)], wifiTotal: ByteCounters(received: 1_000, sent: 0))
+    #expect(list.map(\.id) == ["b"])
   }
 
   @Test("leaves Other out when apps account for everything")
@@ -154,8 +178,16 @@ struct AppUsageListTests {
     #expect(unattributed(wifi: ByteCounters(received: 5, sent: 9), apps: ByteCounters(received: 7, sent: 4)) == ByteCounters(received: 0, sent: 5))
   }
 
-  @Test("buckets dates by hour")
+  @Test("buckets dates by calendar hour, which never starts before the local day it is in")
   func hours() {
-    #expect(hourBucket(for: Date(timeIntervalSince1970: 7_259)) == Date(timeIntervalSince1970: 7_200))
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "Asia/Kolkata")!
+    // Midnight in India is 18:30 UTC, half way through a UTC hour.
+    let midnight = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
+    #expect(hourBucket(for: midnight.addingTimeInterval(5 * 60), calendar: calendar) == midnight)
+    #expect(hourBucket(for: midnight.addingTimeInterval(-1), calendar: calendar) == midnight.addingTimeInterval(-3_600))
+
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    #expect(hourBucket(for: Date(timeIntervalSince1970: 7_259), calendar: calendar) == Date(timeIntervalSince1970: 7_200))
   }
 }

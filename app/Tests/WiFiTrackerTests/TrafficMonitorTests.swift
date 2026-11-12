@@ -5,6 +5,45 @@ import Testing
 import WiFiTrackerCore
 @testable import WiFiTracker
 
+/// Stands in for `nettop`: returns the output it was last given, or holds one call open until `finish`.
+private actor NettopStub {
+  private var output = ""
+  private var holdsNext = false
+  private var held: CheckedContinuation<String, Never>?
+  private var heldWaiters: [CheckedContinuation<Void, Never>] = []
+
+  /// One socket of a process that doesn't exist, so it is listed under its `nettop` name.
+  static func output(received: UInt64) -> String {
+    "curl.\(Int32.max),\(received),0,\ntcp4 10.0.0.2:5000<->1.1.1.1:443,\(received),0,\n"
+  }
+
+  func set(received: UInt64) {
+    output = Self.output(received: received)
+  }
+
+  func holdNext() {
+    holdsNext = true
+  }
+
+  func snapshot() async -> String {
+    guard holdsNext else { return output }
+    holdsNext = false
+    heldWaiters.forEach { $0.resume() }
+    heldWaiters = []
+    return await withCheckedContinuation { held = $0 }
+  }
+
+  func waitUntilHeld() async {
+    guard held == nil else { return }
+    await withCheckedContinuation { heldWaiters.append($0) }
+  }
+
+  func finish(received: UInt64) {
+    held?.resume(returning: Self.output(received: received))
+    held = nil
+  }
+}
+
 @Suite("Traffic monitor integration")
 @MainActor
 struct TrafficMonitorTests {
@@ -112,6 +151,62 @@ struct TrafficMonitorTests {
     #expect(totalUsage(restarted.pendingRecords).received == 10)
   }
 
+  @Test("clear history restarts per-app accounting from a fresh socket baseline")
+  func clearResetsAppBoundary() async throws {
+    let fixture = try Fixture()
+    let nettop = NettopStub()
+    let apps = AppTrafficMonitor(snapshot: { await nettop.snapshot() })
+    let monitor = fixture.makeMonitor(apps: apps)
+    monitor.tick()
+    await nettop.set(received: 1_000)
+    await apps.sample()
+    await nettop.set(received: 1_500)
+    await apps.sample()
+    #expect(apps.pendingUsage.map(\.bytes.received) == [500])
+
+    // The socket moves another 300 bytes before the clear, which no sample has seen yet.
+    try monitor.clearHistory()
+    #expect(apps.pendingUsage.isEmpty)
+    #expect(apps.rates.isEmpty)
+    await nettop.set(received: 1_800)
+    await apps.sample()
+    #expect(apps.pendingUsage.isEmpty)
+    await nettop.set(received: 1_900)
+    await apps.sample()
+    #expect(apps.pendingUsage.map(\.bytes.received) == [100])
+  }
+
+  @Test("clear history drops a per-app sample that was in flight")
+  func clearDropsInFlightAppSample() async throws {
+    let fixture = try Fixture()
+    let nettop = NettopStub()
+    let apps = AppTrafficMonitor(snapshot: { await nettop.snapshot() })
+    let monitor = fixture.makeMonitor(apps: apps)
+    monitor.tick()
+    await nettop.set(received: 1_000)
+    await apps.sample()
+
+    await nettop.holdNext()
+    let inFlight = Task { await apps.sample() }
+    await nettop.waitUntilHeld()
+    try monitor.clearHistory()
+    await nettop.finish(received: 1_500)
+    await inFlight.value
+    #expect(apps.pendingUsage.isEmpty)
+    #expect(apps.pendingRecords.isEmpty)
+
+    // Routine saves still only empty the buffer: socket accounting carries on.
+    await nettop.set(received: 1_500)
+    await apps.sample()
+    await nettop.set(received: 1_600)
+    await apps.sample()
+    monitor.flush()
+    #expect(apps.pendingUsage.isEmpty)
+    await nettop.set(received: 1_650)
+    await apps.sample()
+    #expect(apps.pendingUsage.map(\.bytes.received) == [50])
+  }
+
   @Test("legacy UserDefaults recovery is not imported into a new database")
   func freshDatabase() throws {
     let fixture = try Fixture()
@@ -199,14 +294,20 @@ struct TrafficMonitorTests {
   }
 
   @Test("per-app save failures do not hide successfully committed network history")
-  func appWriteFailure() throws {
+  func appWriteFailure() async throws {
     let fixture = try Fixture()
-    let monitor = fixture.makeMonitor(saveAppUsage: { _, _ in
+    let nettop = NettopStub()
+    let apps = AppTrafficMonitor(snapshot: { await nettop.snapshot() })
+    let monitor = fixture.makeMonitor(apps: apps, saveAppUsage: { _, _ in
       throw UsageStoreError.sqlite("test app failure")
     })
     monitor.tick()
+    await nettop.set(received: 1_000)
+    await apps.sample()
     fixture.advance(received: 50)
     monitor.tick()
+    await nettop.set(received: 1_040)
+    await apps.sample()
     let revision = monitor.historyRevision
     monitor.flush()
     #expect(monitor.storeError?.contains("app history") == true)
@@ -214,6 +315,15 @@ struct TrafficMonitorTests {
     #expect(monitor.pendingRecords.isEmpty)
     #expect(totalUsage(monitor.committedRecords).received == 50)
     #expect(try monitor.store?.total(since: nil).received == 50)
+
+    // The app's bytes are kept for a retry and are part of the saved Wi-Fi total: the Apps list
+    // must not show them under Other as well.
+    #expect(apps.pendingUsage.map(\.bytes.received) == [40])
+    let model = AppUsageModel()
+    await model.load(.day, from: monitor.store, now: fixture.state.origin.addingTimeInterval(fixture.state.uptime))
+    let list = model.list(pendingApps: apps.pendingUsage, pendingWifi: totalUsage(monitor.pendingRecords))
+    #expect(list.map(\.name) == ["curl", AppUsage.otherName])
+    #expect(list.map(\.bytes.received) == [40, 10])
   }
 
   @MainActor
@@ -237,11 +347,12 @@ struct TrafficMonitorTests {
     }
 
     func makeMonitor(
+      apps: AppTrafficMonitor = AppTrafficMonitor(),
       saveAppUsage: @escaping (UsageStore, [AppUsageRecord]) throws -> Void = { try $0.addAppUsage($1) }
     ) -> TrafficMonitor {
       let state = state
       let wifi = WiFiInfo(snapshotReader: { state.snapshot }, monitorsEvents: false)
-      return TrafficMonitor(wifi: wifi, storeURL: url, readCounters: { _ in state.counters },
+      return TrafficMonitor(wifi: wifi, storeURL: url, apps: apps, readCounters: { _ in state.counters },
                             readBootTime: { state.bootTime },
                             dateNow: { state.origin.addingTimeInterval(state.uptime) }, uptimeNow: { state.uptime },
                             saveAppUsage: saveAppUsage)

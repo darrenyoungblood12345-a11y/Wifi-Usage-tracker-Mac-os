@@ -40,10 +40,10 @@ struct UsageStoreTests {
     #expect(try store.total(since: nil) == ByteCounters(received: 7, sent: 0))
   }
 
-  @Test("compacts old minutes into hours without losing bytes")
+  @Test("compacts old minutes into quarter hours without losing bytes")
   func compaction() throws {
     try store.add([
-      record(7_200, rx: 1),             // 02:00 minute (already on the hour)
+      record(7_200, rx: 1),             // 02:00 minute (already on the quarter hour)
       record(7_260, rx: 2, tx: 1),      // 02:01
       record(10_740, rx: 4),            // 02:59
       record(10_740, "Cafe", rx: 8),    // 02:59, other network
@@ -53,12 +53,39 @@ struct UsageStoreTests {
     try store.compact(olderThan: at(10_800))
     let records = try store.allRecords()
     #expect(records.map { "\(Int($0.bucket.timeIntervalSince1970)) \($0.network) \($0.bytes.received)" } == [
-      "7200 Cafe 8",
-      "7200 Home 7",
+      "7200 Home 3",
+      "9900 Cafe 8",
+      "9900 Home 4",
       "10800 Home 16",
       "10860 Home 32",
     ])
     #expect(try store.total(since: nil) == ByteCounters(received: 63, sent: 1))
+  }
+
+  @Test("compaction keeps usage on the local day and month it happened on", arguments: ["Asia/Kolkata", "Asia/Kathmandu", "America/Los_Angeles"])
+  func compactionKeepsLocalDays(zone: String) throws {
+    let calendar = calendar(in: zone)
+    // Midnight on the 1st is a day and a month boundary, at 18:30 UTC in India and 18:15 UTC in Nepal.
+    let midnight = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
+    try store.add([
+      UsageRecord(bucket: midnight.addingTimeInterval(-60), network: "Home", bytes: ByteCounters(received: 1, sent: 0)),
+      UsageRecord(bucket: midnight.addingTimeInterval(60), network: "Home", bytes: ByteCounters(received: 2, sent: 0)),
+    ])
+    try store.compact(olderThan: midnight.addingTimeInterval(86_400))
+    #expect(try store.total(since: midnight) == ByteCounters(received: 2, sent: 0))
+    let months = aggregate(
+      try store.allRecords(),
+      over: DateInterval(start: midnight.addingTimeInterval(-60), end: midnight.addingTimeInterval(120)),
+      by: .month,
+      calendar: calendar
+    )
+    #expect(months.map(\.bytes.received) == [1, 2])
+  }
+
+  func calendar(in zone: String) -> Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: zone)!
+    return calendar
   }
 
   @Test("keeps unidentified usage separate from a real network named Wi-Fi, including after compaction")
@@ -223,6 +250,18 @@ struct UsageStoreTests {
       AppUsage(id: "curl", name: "curl", bytes: ByteCounters(received: 505, sent: 0)),
       AppUsage(id: "com.google.Chrome", name: "Google Chrome", bytes: ByteCounters(received: 151, sent: 10)),
     ])
+  }
+
+  @Test("an app's download just after local midnight on a range's first day is inside the range")
+  func appUsageAtRangeStart() throws {
+    let calendar = calendar(in: "Asia/Kolkata")
+    let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 8, hour: 14, minute: 37))!
+    let interval = HistoryRange.week.interval(now: now, calendar: calendar)
+    let download = interval.start.addingTimeInterval(5 * 60)
+    try store.addAppUsage([
+      AppUsageRecord(bucket: hourBucket(for: download, calendar: calendar), app: "curl", name: "curl", bytes: ByteCounters(received: 7, sent: 0)),
+    ])
+    #expect(try store.appUsage(in: interval).map(\.bytes.received) == [7])
   }
 
   @Test("adds the app usage table to a database created before it existed")

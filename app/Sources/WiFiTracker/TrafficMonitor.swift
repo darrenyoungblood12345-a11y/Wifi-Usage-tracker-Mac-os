@@ -36,7 +36,7 @@ final class TrafficMonitor {
   let wifi: WiFiInfo
   let storeURL: URL
   let store: UsageStore?
-  let apps = AppTrafficMonitor()
+  let apps: AppTrafficMonitor
 
   @ObservationIgnored private var accounting = NetworkAccounting()
   @ObservationIgnored private var didRecoverCheckpoint = false
@@ -61,6 +61,7 @@ final class TrafficMonitor {
   init(
     wifi: WiFiInfo = WiFiInfo(),
     storeURL: URL = UsageStore.defaultURL,
+    apps: AppTrafficMonitor = AppTrafficMonitor(),
     readCounters: @escaping (String) -> ByteCounters? = { InterfaceCounters.read(interface: $0) },
     readBootTime: @escaping () -> Date? = { SystemBoot.time() },
     dateNow: @escaping () -> Date = { .now },
@@ -69,6 +70,7 @@ final class TrafficMonitor {
   ) {
     self.wifi = wifi
     self.storeURL = storeURL
+    self.apps = apps
     self.readCounters = readCounters
     self.readBootTime = readBootTime
     self.dateNow = dateNow
@@ -187,7 +189,7 @@ final class TrafficMonitor {
     pendingRecords = []
     committed = [:]
     committedRecords = []
-    apps.clearPending()
+    apps.reset()
     totals = .zero
     historyEpoch += 1
     historyRevision += 1

@@ -25,8 +25,16 @@ final class AppTrafficMonitor {
 
   @ObservationIgnored private var pending: [PendingKey: ByteCounters] = [:]
   @ObservationIgnored private var names: [String: String] = [:]
-  @ObservationIgnored private let sampler = AppTrafficSampler()
+  @ObservationIgnored private var sampler: AppTrafficSampler
+  @ObservationIgnored private let snapshot: @Sendable () async throws -> String
+  /// Bumped by `reset`, so a sample that was in flight at the time is dropped.
+  @ObservationIgnored private var generation = 0
   @ObservationIgnored private var loop: Task<Void, Never>?
+
+  init(snapshot: @escaping @Sendable () async throws -> String = { try await Nettop.snapshot() }) {
+    self.snapshot = snapshot
+    sampler = AppTrafficSampler(snapshot: snapshot)
+  }
 
   private struct PendingKey: Hashable {
     let hour: Date
@@ -54,9 +62,21 @@ final class AppTrafficMonitor {
     pendingUsage = []
   }
 
-  private func sample() async {
+  /// Call when history is cleared. Unlike `clearPending`, this also restarts socket accounting
+  /// from a fresh baseline, so nothing an app moved before the clear is counted after it.
+  func reset() {
+    clearPending()
+    rates = [:]
+    sampler = AppTrafficSampler(snapshot: snapshot)
+    generation += 1
+  }
+
+  // Internal for deterministic integration tests with an injected snapshot.
+  func sample() async {
+    let generation = generation
     do {
       let sample = try await sampler.sample()
+      guard generation == self.generation else { return }
       unavailableReason = nil
       record(sample)
     } catch {
@@ -95,9 +115,14 @@ actor AppTrafficSampler {
   private var tracker = SocketDeltaTracker()
   private var identities: [Int32: (process: String, identity: AppIdentity)] = [:]
   private var previousInstant: ContinuousClock.Instant?
+  private let snapshot: @Sendable () async throws -> String
+
+  init(snapshot: @escaping @Sendable () async throws -> String) {
+    self.snapshot = snapshot
+  }
 
   func sample() async throws -> AppTrafficSample {
-    let output = try await Nettop.snapshot()
+    let output = try await snapshot()
     let instant = ContinuousClock.now
     let elapsed = previousInstant.map { (instant - $0) / .seconds(1) } ?? 0
     previousInstant = instant

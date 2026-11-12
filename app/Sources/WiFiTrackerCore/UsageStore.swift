@@ -137,21 +137,24 @@ public final class UsageStore: @unchecked Sendable {
     }
   }
 
-  /// Rolls minute buckets older than `cutoff` up into hour buckets to keep the database small.
+  /// Rolls minute buckets older than `cutoff` up into quarter-hour buckets to keep the database small.
+  ///
+  /// Quarter hours rather than hours because every time zone's offset is a multiple of 15 minutes:
+  /// a bucket then never spans a local day or month boundary, whichever zone history is later read in.
   public func compact(olderThan cutoff: Date) throws {
     try locked {
       try transaction {
         try withStatement("""
           INSERT INTO usage (bucket, network, rx, tx, unattributed)
-          SELECT (bucket / 3600) * 3600 AS hour, network, SUM(rx), SUM(tx), unattributed
-          FROM usage WHERE bucket < ?1 AND bucket % 3600 != 0
-          GROUP BY hour, network, unattributed
+          SELECT (bucket / 900) * 900 AS quarter, network, SUM(rx), SUM(tx), unattributed
+          FROM usage WHERE bucket < ?1 AND bucket % 900 != 0
+          GROUP BY quarter, network, unattributed
           ON CONFLICT (bucket, network, unattributed) DO UPDATE SET rx = rx + excluded.rx, tx = tx + excluded.tx
           """) { statement in
           sqlite3_bind_int64(statement, 1, seconds(cutoff))
           try step(statement)
         }
-        try withStatement("DELETE FROM usage WHERE bucket < ?1 AND bucket % 3600 != 0") { statement in
+        try withStatement("DELETE FROM usage WHERE bucket < ?1 AND bucket % 900 != 0") { statement in
           sqlite3_bind_int64(statement, 1, seconds(cutoff))
           try step(statement)
         }

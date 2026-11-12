@@ -37,9 +37,13 @@ public struct AppUsageRecord: Equatable, Sendable {
   }
 }
 
-/// Start of the hour containing `date`, which is the granularity per-app usage is stored at.
-public func hourBucket(for date: Date) -> Date {
-  Date(timeIntervalSince1970: (date.timeIntervalSince1970 / 3600).rounded(.down) * 3600)
+/// Start of the calendar hour containing `date`, which is the granularity per-app usage is stored at.
+///
+/// Calendar hours rather than UTC ones, so a bucket never starts before the local day or month
+/// its traffic happened in: history ranges start at local midnight, which in a time zone such as
+/// UTC+5:30 falls in the middle of a UTC hour.
+public func hourBucket(for date: Date, calendar: Calendar = .current) -> Date {
+  calendar.dateInterval(of: .hour, for: date)?.start ?? date
 }
 
 /// The Apps list: saved plus not-yet-saved usage per app, largest first, then the Wi-Fi traffic

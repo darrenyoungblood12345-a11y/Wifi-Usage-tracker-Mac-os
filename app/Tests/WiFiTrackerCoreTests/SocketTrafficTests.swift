@@ -171,8 +171,16 @@ struct AppUsageListTests {
     #expect(unattributed(wifi: ByteCounters(received: 5, sent: 9), apps: ByteCounters(received: 7, sent: 4)) == ByteCounters(received: 0, sent: 5))
   }
 
-  @Test("buckets dates by hour")
+  @Test("buckets dates by calendar hour, which never starts before the local day it is in")
   func hours() {
-    #expect(hourBucket(for: Date(timeIntervalSince1970: 7_259)) == Date(timeIntervalSince1970: 7_200))
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "Asia/Kolkata")!
+    // Midnight in India is 18:30 UTC, half way through a UTC hour.
+    let midnight = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
+    #expect(hourBucket(for: midnight.addingTimeInterval(5 * 60), calendar: calendar) == midnight)
+    #expect(hourBucket(for: midnight.addingTimeInterval(-1), calendar: calendar) == midnight.addingTimeInterval(-3_600))
+
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    #expect(hourBucket(for: Date(timeIntervalSince1970: 7_259), calendar: calendar) == Date(timeIntervalSince1970: 7_200))
   }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Bytes moved on one network during one time bucket (a minute, or an hour once compacted).
+/// Bytes moved on one network during one time bucket (a minute, or a quarter hour once compacted).
 public struct UsageRecord: Equatable, Sendable {
   public var bucket: Date
   public var network: String

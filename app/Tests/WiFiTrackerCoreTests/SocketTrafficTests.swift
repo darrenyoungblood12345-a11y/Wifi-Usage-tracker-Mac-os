@@ -92,6 +92,23 @@ struct SocketDeltaTrackerTests {
     #expect(tracker.update([socket(1, 5000, rx: 40)], at: start + 20).map(\.bytes.received) == [40])
   }
 
+  @Test("a socket still open after a sampling gap longer than the memory window only counts its growth")
+  func survivesSamplingGap() {
+    var tracker = SocketDeltaTracker(memory: 10)
+    _ = tracker.update([socket(1, 5000, rx: 1_000, tx: 100)], at: start)
+    // No snapshots for a while (sleep, failed samples), and the socket moved nothing meanwhile.
+    #expect(tracker.update([socket(1, 5000, rx: 1_000, tx: 100)], at: start + 600).isEmpty)
+    #expect(tracker.update([socket(1, 5000, rx: 1_250, tx: 100)], at: start + 602).map(\.bytes.received) == [250])
+  }
+
+  @Test("a socket that drops out briefly right after a sampling gap is still remembered")
+  func dropsOutAfterSamplingGap() {
+    var tracker = SocketDeltaTracker(memory: 10)
+    _ = tracker.update([socket(1, 5000, rx: 1_000)], at: start)
+    #expect(tracker.update([], at: start + 600).isEmpty)
+    #expect(tracker.update([socket(1, 5000, rx: 1_030)], at: start + 602).map(\.bytes.received) == [30])
+  }
+
   @Test("a count that goes backwards resets the baseline instead of counting")
   func countWentBackwards() {
     var tracker = SocketDeltaTracker()

@@ -294,14 +294,20 @@ struct TrafficMonitorTests {
   }
 
   @Test("per-app save failures do not hide successfully committed network history")
-  func appWriteFailure() throws {
+  func appWriteFailure() async throws {
     let fixture = try Fixture()
-    let monitor = fixture.makeMonitor(saveAppUsage: { _, _ in
+    let nettop = NettopStub()
+    let apps = AppTrafficMonitor(snapshot: { await nettop.snapshot() })
+    let monitor = fixture.makeMonitor(apps: apps, saveAppUsage: { _, _ in
       throw UsageStoreError.sqlite("test app failure")
     })
     monitor.tick()
+    await nettop.set(received: 1_000)
+    await apps.sample()
     fixture.advance(received: 50)
     monitor.tick()
+    await nettop.set(received: 1_040)
+    await apps.sample()
     let revision = monitor.historyRevision
     monitor.flush()
     #expect(monitor.storeError?.contains("app history") == true)
@@ -309,6 +315,15 @@ struct TrafficMonitorTests {
     #expect(monitor.pendingRecords.isEmpty)
     #expect(totalUsage(monitor.committedRecords).received == 50)
     #expect(try monitor.store?.total(since: nil).received == 50)
+
+    // The app's bytes are kept for a retry and are part of the saved Wi-Fi total: the Apps list
+    // must not show them under Other as well.
+    #expect(apps.pendingUsage.map(\.bytes.received) == [40])
+    let model = AppUsageModel()
+    await model.load(.day, from: monitor.store, now: fixture.state.origin.addingTimeInterval(fixture.state.uptime))
+    let list = model.list(pendingApps: apps.pendingUsage, pendingWifi: totalUsage(monitor.pendingRecords))
+    #expect(list.map(\.name) == ["curl", AppUsage.otherName])
+    #expect(list.map(\.bytes.received) == [40, 10])
   }
 
   @MainActor

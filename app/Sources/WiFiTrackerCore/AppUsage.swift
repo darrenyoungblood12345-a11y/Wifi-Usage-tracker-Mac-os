@@ -47,7 +47,11 @@ public func hourBucket(for date: Date, calendar: Calendar = .current) -> Date {
 }
 
 /// The Apps list: saved plus not-yet-saved usage per app, largest first, then the Wi-Fi traffic
-/// the saved app usage doesn't account for as "Other traffic".
+/// none of it accounts for as "Other traffic".
+///
+/// `wifiTotal` has to cover saved and not-yet-saved traffic alike. Other is what is left after
+/// every app in the list: unsaved app usage may already be in the saved Wi-Fi total (an app save
+/// that failed after its Wi-Fi save), and taking off saved usage only would list it twice.
 public func appUsageList(stored: [AppUsage], pending: [AppUsage], wifiTotal: ByteCounters) -> [AppUsage] {
   let apps = (stored + pending)
     .reduce(into: [String: AppUsage]()) { merged, usage in
@@ -56,7 +60,7 @@ public func appUsageList(stored: [AppUsage], pending: [AppUsage], wifiTotal: Byt
     }
     .values
     .sorted { ($0.bytes.total, $1.name) > ($1.bytes.total, $0.name) }
-  let other = unattributed(wifi: wifiTotal, apps: stored.reduce(.zero) { $0 + $1.bytes })
+  let other = unattributed(wifi: wifiTotal, apps: apps.reduce(.zero) { $0 + $1.bytes })
   return other.total > 0 ? apps + [AppUsage(id: AppUsage.otherID, name: AppUsage.otherName, bytes: other)] : apps
 }
 

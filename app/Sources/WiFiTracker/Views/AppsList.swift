@@ -9,15 +9,21 @@ final class AppUsageModel {
   private(set) var apps: [AppUsage] = []
   private(set) var wifiTotal = ByteCounters.zero
 
-  func load(_ range: HistoryRange, from store: UsageStore?) async {
+  func load(_ range: HistoryRange, from store: UsageStore?, now: Date = .now) async {
     guard let store else { return }
-    let interval = range.interval(now: .now, calendar: .current)
+    let interval = range.interval(now: now, calendar: .current)
     let (apps, wifiTotal) = await Task.detached {
       ((try? store.appUsage(in: interval)) ?? [], (try? store.total(since: interval.start)) ?? .zero)
     }.value
     guard !Task.isCancelled else { return }
     self.apps = apps
     self.wifiTotal = wifiTotal
+  }
+
+  /// The Apps list: what was loaded plus usage that isn't saved yet. The Wi-Fi total has to
+  /// include its unsaved bytes too, so that Other is measured over the same traffic as the apps.
+  func list(pendingApps: [AppUsage], pendingWifi: ByteCounters) -> [AppUsage] {
+    appUsageList(stored: apps, pending: pendingApps, wifiTotal: wifiTotal + pendingWifi)
   }
 }
 
@@ -32,7 +38,7 @@ struct AppsSection: View {
   private static let collapsedCount = 10
 
   var body: some View {
-    let list = appUsageList(stored: model.apps, pending: monitor.apps.pendingUsage, wifiTotal: model.wifiTotal)
+    let list = model.list(pendingApps: monitor.apps.pendingUsage, pendingWifi: totalUsage(monitor.pendingRecords))
     let apps = list.filter { !$0.isOther }
     let other = list.filter(\.isOther)
     let visible = (showsAll ? apps : Array(apps.prefix(Self.collapsedCount))) + other

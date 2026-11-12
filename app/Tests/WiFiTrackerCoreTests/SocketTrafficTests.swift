@@ -153,15 +153,22 @@ struct AppUsageListTests {
     #expect(list.map(\.bytes.received) == [700, 500, 100])
   }
 
-  @Test("adds Wi-Fi traffic the saved app usage doesn't cover as a last Other row")
+  @Test("adds Wi-Fi traffic that neither saved nor unsaved app usage covers as a last Other row")
   func otherTraffic() {
     let list = appUsageList(
       stored: [usage("a", rx: 100, tx: 50)],
       pending: [usage("b", rx: 1_000)],
-      wifiTotal: ByteCounters(received: 160, sent: 40)
+      wifiTotal: ByteCounters(received: 1_160, sent: 40)
     )
     #expect(list.map(\.id) == ["b", "a", AppUsage.otherID])
     #expect(list.last?.bytes == ByteCounters(received: 60, sent: 0))
+  }
+
+  @Test("unsaved app usage that the Wi-Fi total already includes isn't listed again as Other")
+  func unsavedAppsAreNotOther() {
+    // What a failed app-history save leaves behind: the Wi-Fi bytes are saved, the app's are not.
+    let list = appUsageList(stored: [], pending: [usage("b", rx: 1_000)], wifiTotal: ByteCounters(received: 1_000, sent: 0))
+    #expect(list.map(\.id) == ["b"])
   }
 
   @Test("leaves Other out when apps account for everything")

@@ -8,16 +8,41 @@ import WiFiTrackerCore
 final class AppUsageModel {
   private(set) var apps: [AppUsage] = []
   private(set) var wifiTotal = ByteCounters.zero
+  private(set) var loadError: String?
 
-  func load(_ range: HistoryRange, from store: UsageStore?, now: Date = .now) async {
+  /// The last successful read of each range, which a failed read falls back to.
+  @ObservationIgnored private var snapshots: [HistoryRange: Snapshot] = [:]
+  @ObservationIgnored private var epoch: Int?
+
+  typealias Snapshot = (apps: [AppUsage], wifiTotal: ByteCounters)
+
+  func load(_ range: HistoryRange, from store: UsageStore?, epoch: Int = 0, now: Date = .now) async {
     guard let store else { return }
     let interval = range.interval(now: now, calendar: .current)
-    let (apps, wifiTotal) = await Task.detached {
-      ((try? store.appUsage(in: interval)) ?? [], (try? store.total(since: interval.start)) ?? .zero)
-    }.value
-    guard !Task.isCancelled else { return }
-    self.apps = apps
-    self.wifiTotal = wifiTotal
+    await load(range, epoch: epoch) {
+      try await Task.detached { (try store.appUsage(in: interval), try store.total(since: interval.start)) }.value
+    }
+  }
+
+  /// A failed read keeps the range's last good snapshot and reports the error. Showing empty
+  /// app rows instead would pass all of the range's Wi-Fi usage off as Other traffic.
+  func load(_ range: HistoryRange, epoch: Int = 0, read: @Sendable () async throws -> Snapshot) async {
+    // Snapshots from before a history clear must not come back after it.
+    if let previousEpoch = self.epoch, previousEpoch != epoch {
+      snapshots = [:]
+    }
+    self.epoch = epoch
+    do {
+      let snapshot = try await read()
+      guard !Task.isCancelled else { return }
+      snapshots[range] = snapshot
+      loadError = nil
+    } catch {
+      guard !Task.isCancelled else { return }
+      loadError = "Couldn’t read saved app usage: \(error)"
+    }
+    apps = snapshots[range]?.apps ?? []
+    wifiTotal = snapshots[range]?.wifiTotal ?? .zero
   }
 
   /// The Apps list: what was loaded plus usage that isn't saved yet. The Wi-Fi total has to
@@ -52,6 +77,17 @@ struct AppsSection: View {
             .font(.callout)
             .foregroundStyle(.secondary)
         }
+        if let error = model.loadError {
+          HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+              Label("Showing the last available app usage and live traffic", systemImage: "exclamationmark.triangle")
+                .font(.callout)
+              Text(error).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Retry") { monitor.refreshForPresentation() }
+          }
+        }
         if list.isEmpty {
           Text("Apps using Wi-Fi will appear here.")
             .font(.callout)
@@ -70,7 +106,7 @@ struct AppsSection: View {
       }
     }
     .task(id: "\(range.rawValue)-\(monitor.historyRevision)") {
-      await model.load(range, from: monitor.store)
+      await model.load(range, from: monitor.store, epoch: monitor.historyEpoch)
     }
   }
 
